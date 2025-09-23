@@ -1,0 +1,225 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Supabase Project and Define Database Schema",
+        "description": "Set up a new Supabase project and define the database schema according to the PRD, including tables for sessions, users, added_tracks, and session_participants.",
+        "details": "1. Create a new Supabase project.\n2. Define the `users` table with columns: `id` (UUID, PK), `spotify_id` (Text, Unique), `display_name`, `email`, `profile_image_url`, `created_at` (Timestamp).\n3. Define the `sessions` table with columns: `id` (UUID, PK), `host_user_id` (UUID, FK to users.id), `session_name` (Text), `created_at`, `ended_at` (Timestamps), `join_code` (Text, Unique), `spotify_access_token`, `spotify_refresh_token`, `host_spotify_device_id` (Text).\n4. Define the `added_tracks` table with columns: `id` (UUID, PK), `session_id` (UUID, FK), `spotify_track_id`, `track_name`, `artist_name`, `album_cover_url`, `added_by_guest_id` (UUID, FK), `added_at` (Timestamp), `is_played` (Boolean), `play_order` (Integer).\n5. Define the `session_participants` table with columns: `id` (UUID, PK), `session_id` (UUID, FK), `guest_nickname` (Text), `joined_at`, `left_at` (Timestamps).\n6. Enable Supabase Authentication.",
+        "testStrategy": "Verify that the tables are created with the correct schema in the Supabase dashboard. Test Supabase authentication by creating a test user.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create `users` table",
+            "description": "Define the `users` table with columns: `id` (UUID, PK), `spotify_id` (Text, Unique), `display_name`, `email`, `profile_image_url`, `created_at` (Timestamp).",
+            "dependencies": [],
+            "details": "Use Supabase SQL editor or CLI to create the `users` table with the specified columns and constraints.\n<info added on 2025-09-23T10:47:23.273Z>\n✅ Users 테이블 생성 완료\n\n**구현 내용:**\n- 📄 `scripts/setup-database.js` 파일에 users 테이블 생성 SQL 스크립트 작성\n- 🔐 Row Level Security (RLS) 정책 설정\n  - 사용자는 자신의 프로필만 조회/수정 가능\n- 📊 성능 최적화를 위한 인덱스 생성 (spotify_id)\n- 🏗️ `src/lib/supabase.ts`에 TypeScript 타입 정의 포함\n\n**테이블 구조:**\n```sql\nCREATE TABLE public.users (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    spotify_id TEXT UNIQUE NOT NULL,\n    display_name TEXT,\n    email TEXT UNIQUE,\n    profile_image_url TEXT,\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n);\n```\n\n**다음 단계:** \n- Supabase 서비스 역할 키 설정 후 `npm run db:setup` 실행하여 실제 테이블 생성\n- 또는 Supabase 대시보드에서 SQL 에디터로 직접 실행 가능\n</info added on 2025-09-23T10:47:23.273Z>",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Create `sessions` table",
+            "description": "Define the `sessions` table with columns: `id` (UUID, PK), `host_user_id` (UUID, FK to users.id), `session_name` (Text), `created_at`, `ended_at` (Timestamps), `join_code` (Text, Unique), `spotify_access_token`, `spotify_refresh_token`, `host_spotify_device_id` (Text).",
+            "dependencies": [
+              "1.1"
+            ],
+            "details": "Use Supabase SQL editor or CLI to create the `sessions` table with the specified columns and constraints, including the foreign key relationship to the `users` table.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Create `added_tracks` table",
+            "description": "Define the `added_tracks` table with columns: `id` (UUID, PK), `session_id` (UUID, FK), `spotify_track_id`, `track_name`, `artist_name`, `album_cover_url`, `added_by_guest_id` (UUID, FK), `added_at` (Timestamp), `is_played` (Boolean), `play_order` (Integer).",
+            "dependencies": [
+              "1.2"
+            ],
+            "details": "Use Supabase SQL editor or CLI to create the `added_tracks` table with the specified columns and constraints, including the foreign key relationship to the `sessions` table.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Create `session_participants` table",
+            "description": "Define the `session_participants` table with columns: `id` (UUID, PK), `session_id` (UUID, FK), `guest_nickname` (Text), `joined_at`, `left_at` (Timestamps).",
+            "dependencies": [
+              "1.2"
+            ],
+            "details": "Use Supabase SQL editor or CLI to create the `session_participants` table with the specified columns and constraints, including the foreign key relationship to the `sessions` table.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Enable Supabase Authentication",
+            "description": "Enable Supabase Authentication for user management.",
+            "dependencies": [],
+            "details": "Enable email/password authentication and social provider authentication (e.g., Google, Spotify) in the Supabase dashboard.\n<info added on 2025-09-23T10:50:14.353Z>\n✅ Supabase Authentication 설정 완료\n\n**구현 내용:**\n🔐 **NextAuth.js + Supabase 통합 인증 시스템**\n- NextAuth.js와 Supabase Adapter 연동\n- Spotify OAuth 2.0 Provider 설정 (필요한 모든 스코프 포함)\n- JWT 기반 세션 관리\n\n📁 **생성된 파일들:**\n- `src/lib/supabase/client.ts` - 브라우저 클라이언트\n- `src/lib/supabase/server.ts` - 서버 클라이언트  \n- `src/lib/supabase/middleware.ts` - 미들웨어 헬퍼\n- `middleware.ts` - Next.js 미들웨어 (자동 인증 체크)\n- `src/app/api/auth/[...nextauth]/route.ts` - NextAuth API 라우트\n- `src/app/login/page.tsx` - 로그인 페이지\n- `src/components/providers/SessionProvider.tsx` - 세션 프로바이더\n- `src/types/next-auth.d.ts` - TypeScript 타입 정의\n\n🎯 **Spotify OAuth 스코프:**\n- 사용자 정보: `user-read-email`, `user-read-private`\n- 재생 제어: `user-modify-playback-state`, `user-read-playback-state`\n- 플레이리스트: `playlist-modify-public`, `playlist-modify-private`\n- 스트리밍: `streaming`\n\n🔧 **다음 단계:**\n1. Supabase 대시보드에서 anon key와 service role key 복사\n2. Spotify Developer Dashboard에서 앱 생성 및 Client ID/Secret 발급\n3. `env.template`를 `.env.local`로 복사하고 실제 키 값들로 교체\n4. Supabase에서 Auth 프로바이더 활성화 (Spotify)\n</info added on 2025-09-23T10:50:14.353Z>",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Implement Spotify OAuth 2.0 Authentication",
+        "description": "Implement the Spotify OAuth 2.0 flow to authenticate users and obtain access tokens for accessing the Spotify Web API.",
+        "details": "1. Register the application with Spotify Developer Dashboard to obtain a client ID and client secret.\n2. Implement the authorization code flow.\n3. Store the access and refresh tokens securely (encrypted in the database).\n4. Implement token refresh mechanism using the refresh token.",
+        "testStrategy": "Test the OAuth flow by authenticating a user and verifying that the access and refresh tokens are successfully obtained and stored in the database. Ensure the token refresh mechanism works correctly.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Set up Backend API with Node.js and Express.js",
+        "description": "Set up the backend API using Node.js and Express.js, including endpoints for session creation, management, and user authentication.",
+        "details": "1. Initialize a new Node.js project with Express.js.\n2. Create API endpoints for:\n   - User authentication (login/logout).\n   - Session creation (create new session, generate join code).\n   - Session management (get session details, update session).\n3. Implement error handling and logging.",
+        "testStrategy": "Use Postman or similar tool to test the API endpoints and verify that they return the expected responses. Check the logs for any errors.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Session Creation and Management",
+        "description": "Implement the functionality for creating and managing sessions, including generating unique join codes and storing session information in the database.",
+        "details": "1. Create an endpoint to handle session creation requests.\n2. Generate a unique join code for each session.\n3. Store the session information in the `sessions` table, including the host user ID, session name, join code, and Spotify access token.\n4. Implement functionality to retrieve session details by join code.",
+        "testStrategy": "Test the session creation functionality by creating a new session and verifying that the session information is correctly stored in the database. Test the session retrieval functionality by retrieving the session details using the join code.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Music Search using Spotify API",
+        "description": "Implement the music search functionality using the Spotify API, allowing users to search for tracks and retrieve relevant information.",
+        "details": "1. Create an API endpoint to handle music search requests.\n2. Use the Spotify API's search endpoint to search for tracks based on the user's query.\n3. Return the search results to the client, including track name, artist name, album cover URL, and Spotify track ID.",
+        "testStrategy": "Test the music search functionality by searching for different tracks and verifying that the search results are correctly returned. Ensure that the search results include the required information.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Queue Management",
+        "description": "Implement the functionality for adding tracks to the session's queue and managing the queue order.",
+        "details": "1. Create an API endpoint to handle requests to add tracks to the queue.\n2. Store the added tracks in the `added_tracks` table, including the session ID, Spotify track ID, track name, artist name, album cover URL, and the user who added the track.\n3. Implement functionality to retrieve the current queue for a session.",
+        "testStrategy": "Test the queue management functionality by adding tracks to the queue and verifying that the tracks are correctly stored in the database. Test the queue retrieval functionality by retrieving the current queue for a session.",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Real-time Queue Synchronization using WebSockets",
+        "description": "Implement real-time queue synchronization using WebSockets to ensure that all participants in a session see the same queue in real-time.",
+        "details": "1. Set up a WebSocket server using a library like Socket.IO.\n2. Establish a WebSocket connection between the client and the server when a user joins a session.\n3. When a track is added to the queue, broadcast the update to all connected clients.\n4. Update the queue on the client-side when a WebSocket message is received.",
+        "testStrategy": "Test the real-time queue synchronization by adding tracks to the queue from one client and verifying that the queue is updated in real-time on other clients.",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Develop React-based PWA Frontend",
+        "description": "Develop the React-based PWA frontend with Tailwind CSS styling and Recoil state management.",
+        "details": "1. Set up a new React project with TypeScript.\n2. Install Tailwind CSS and configure it for styling.\n3. Install Recoil and set up the state management.\n4. Implement the basic UI structure, including components for music search, queue display, and session management.",
+        "testStrategy": "Verify that the React app is set up correctly and that the basic UI components are rendering as expected. Ensure that Tailwind CSS is working correctly and that the styling is applied to the components.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Host Functionality",
+        "description": "Implement the host functionality, including login, session creation, and link generation.",
+        "details": "1. Implement the login functionality using the Spotify OAuth 2.0 flow.\n2. Implement the session creation functionality, allowing the host to create a new session and generate a unique join link.\n3. Display the join link to the host.",
+        "testStrategy": "Test the host functionality by logging in as a host, creating a new session, and verifying that the session is created successfully and that the join link is generated correctly.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          4,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Guest Functionality",
+        "description": "Implement the guest functionality, including session joining, music search, and queue addition.",
+        "details": "1. Implement the session joining functionality, allowing guests to join a session using the join link.\n2. Implement the music search functionality, allowing guests to search for tracks and add them to the queue.\n3. Display the current queue to the guests.",
+        "testStrategy": "Test the guest functionality by joining a session as a guest, searching for tracks, adding them to the queue, and verifying that the tracks are added to the queue and displayed correctly.",
+        "priority": "medium",
+        "dependencies": [
+          5,
+          6,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement QR Code Generation and Sharing",
+        "description": "Implement the functionality to generate QR codes for session links and allow hosts to share them with guests.",
+        "details": "1. Integrate a QR code generation library into the backend.\n2. Create an API endpoint to generate a QR code for a given session link.\n3. Display the QR code to the host and allow them to download or share it.",
+        "testStrategy": "Test the QR code generation functionality by generating a QR code for a session link and verifying that the QR code can be scanned and that it redirects to the correct session link.",
+        "priority": "low",
+        "dependencies": [
+          4,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement Duplicate Song Prevention",
+        "description": "Implement the functionality to prevent duplicate songs from being added to the queue.",
+        "details": "1. Before adding a track to the queue, check if the track is already in the queue.\n2. If the track is already in the queue, display a warning message to the user or disable the add button.",
+        "testStrategy": "Test the duplicate song prevention functionality by adding a track to the queue and then attempting to add the same track again. Verify that the warning message is displayed or that the add button is disabled.",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-09-23T08:00:40.515Z",
+      "updated": "2025-09-23T10:50:26.694Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

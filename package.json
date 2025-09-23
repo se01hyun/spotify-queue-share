@@ -1,0 +1,45 @@
+{
+  "name": "spotify-queue-share",
+  "version": "1.0.0",
+  "description": "**한글 (Korean)**  \r 드라이브, 여행, 파티에서 모두가 함께 음악을 즐길 수 있는 **실시간 음악 큐 공유 웹앱**입니다.  \r 링크나 QR 코드로 접속해 누구나 노래를 검색하고 추가할 수 있으며, 별도의 앱 설치나 로그인 없이 바로 참여할 수 있습니다.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:setup": "node scripts/setup-database.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/se01hyun/spotify-queue-share.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/se01hyun/spotify-queue-share/issues"
+  },
+  "homepage": "https://github.com/se01hyun/spotify-queue-share#readme",
+  "dependencies": {
+    "@auth/supabase-adapter": "^1.10.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "next": "^15.5.3",
+    "next-auth": "^4.24.11",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.13",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.36.0",
+    "eslint-config-next": "^15.5.3",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13"
+  }
+}

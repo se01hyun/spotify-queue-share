@@ -37,3 +37,7 @@ Anyone can join via **link or QR code** to search, add, and manage songs — no 
 ```bash
 git clone https://github.com/your-username/spotify-queue-share.git
 cd spotify-queue-share
+`taskmaster mcp를 사용해서 supabase 설정 task를 진행해.  
+`단, context7 mcp를 반드시 참조해서 최신 문서를 기반으로 작성해.`
+`인증부터 차근차근 진행해`
+`supabase mcp를 활용해서 최신 버전으로 설치해 줘`

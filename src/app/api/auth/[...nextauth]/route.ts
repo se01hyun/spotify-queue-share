@@ -1,0 +1,77 @@
+import NextAuth from 'next-auth'
+import SpotifyProvider from 'next-auth/providers/spotify'
+import { SupabaseAdapter } from '@auth/supabase-adapter'
+import { createClient } from '@/lib/supabase/server'
+
+// Spotify OAuth scopes for playlist management
+const SPOTIFY_SCOPES = [
+  'user-read-email',
+  'user-read-private',
+  'user-modify-playback-state',
+  'user-read-playback-state',
+  'user-read-currently-playing',
+  'playlist-read-private',
+  'playlist-read-collaborative',
+  'playlist-modify-public',
+  'playlist-modify-private',
+  'streaming'
+].join(' ')
+
+const handler = NextAuth({
+  providers: [
+    SpotifyProvider({
+      clientId: process.env.SPOTIFY_CLIENT_ID!,
+      clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: SPOTIFY_SCOPES,
+        },
+      },
+    }),
+  ],
+  adapter: SupabaseAdapter({
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  }),
+  callbacks: {
+    async session({ session, token }) {
+      if (token?.accessToken) {
+        session.accessToken = token.accessToken as string
+      }
+      if (token?.refreshToken) {
+        session.refreshToken = token.refreshToken as string
+      }
+      if (token?.sub) {
+        session.user.id = token.sub
+      }
+      return session
+    },
+    async jwt({ token, account, profile }) {
+      // Persist the OAuth access_token and refresh_token to the token right after signin
+      if (account) {
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        token.expiresAt = account.expires_at
+      }
+
+      // Store Spotify user data
+      if (profile) {
+        token.spotifyId = profile.id
+        token.displayName = profile.display_name
+        token.email = profile.email
+        token.profileImageUrl = profile.images?.[0]?.url
+      }
+
+      return token
+    },
+  },
+  pages: {
+    signIn: '/login',
+    error: '/auth/error',
+  },
+  session: {
+    strategy: 'jwt',
+  },
+})
+
+export { handler as GET, handler as POST }
