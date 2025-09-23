@@ -1,10 +1,8 @@
 # 🎵 Spotify Queue Share
 
-**한글 (Korean)**  
 드라이브, 여행, 파티에서 모두가 함께 음악을 즐길 수 있는 **실시간 음악 큐 공유 웹앱**입니다.  
 링크나 QR 코드로 접속해 누구나 노래를 검색하고 추가할 수 있으며, 별도의 앱 설치나 로그인 없이 바로 참여할 수 있습니다.  
 
-**English**  
 A collaborative real-time music queue web app for drives, trips, and parties.  
 Anyone can join via **link or QR code** to search, add, and manage songs — no login or app installation required.  
 
