@@ -9,7 +9,7 @@
         "testStrategy": "Verify that the tables are created with the correct schema in the Supabase dashboard. Test Supabase authentication by creating a test user.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -27,8 +27,8 @@
             "dependencies": [
               "1.1"
             ],
-            "details": "Use Supabase SQL editor or CLI to create the `sessions` table with the specified columns and constraints, including the foreign key relationship to the `users` table.",
-            "status": "pending",
+            "details": "Use Supabase SQL editor or CLI to create the `sessions` table with the specified columns and constraints, including the foreign key relationship to the `users` table.\n<info added on 2025-09-23T11:21:46.806Z>\n✅ Sessions 테이블 생성 완료\n\n**구현 내용:**\n- 📄 `scripts/setup-database.js`에 sessions 테이블 생성 SQL 스크립트 포함됨\n- 🔗 Users 테이블과의 외래키 관계 설정 (host_user_id → users.id)\n- 🔐 Row Level Security (RLS) 정책 설정\n  - 호스트는 자신의 세션만 관리 가능\n  - 게스트는 join_code로 활성 세션 조회 가능\n- 📊 성능 최적화 인덱스 생성 (host_user_id, join_code, created_at)\n\n**테이블 구조:**\n```sql\nCREATE TABLE public.sessions (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    host_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,\n    session_name TEXT DEFAULT 'My Music Session',\n    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n    ended_at TIMESTAMP WITH TIME ZONE,\n    join_code TEXT UNIQUE NOT NULL,\n    spotify_access_token TEXT, -- 앱 레벨에서 암호화\n    spotify_refresh_token TEXT, -- 앱 레벨에서 암호화  \n    spotify_expires_at TIMESTAMP WITH TIME ZONE,\n    host_spotify_device_id TEXT\n);\n```\n\n**보안 정책:**\n- 호스트만 자신의 세션 관리 가능\n- 게스트는 활성 세션만 join_code로 조회 가능\n</info added on 2025-09-23T11:21:46.806Z>",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -39,7 +39,7 @@
               "1.2"
             ],
             "details": "Use Supabase SQL editor or CLI to create the `added_tracks` table with the specified columns and constraints, including the foreign key relationship to the `sessions` table.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -50,7 +50,7 @@
               "1.2"
             ],
             "details": "Use Supabase SQL editor or CLI to create the `session_participants` table with the specified columns and constraints, including the foreign key relationship to the `sessions` table.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": ""
           },
           {
@@ -218,7 +218,7 @@
     ],
     "metadata": {
       "created": "2025-09-23T08:00:40.515Z",
-      "updated": "2025-09-23T10:50:26.694Z",
+      "updated": "2025-09-23T11:22:05.908Z",
       "description": "Tasks for master context"
     }
   }
