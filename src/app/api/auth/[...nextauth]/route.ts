@@ -1,7 +1,6 @@
 import NextAuth from 'next-auth'
 import SpotifyProvider from 'next-auth/providers/spotify'
 import { SupabaseAdapter } from '@auth/supabase-adapter'
-import { createClient } from '@/lib/supabase/server'
 
 // Spotify OAuth scopes for playlist management
 const SPOTIFY_SCOPES = [

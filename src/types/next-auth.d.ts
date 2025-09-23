@@ -22,6 +22,17 @@ declare module 'next-auth' {
     displayName?: string
     profileImageUrl?: string
   }
+
+  interface Profile {
+    id: string
+    display_name: string
+    email: string
+    images?: Array<{
+      url: string
+      height: number | null
+      width: number | null
+    }>
+  }
 }
 
 declare module 'next-auth/jwt' {

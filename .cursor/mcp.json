@@ -19,7 +19,9 @@
 			"command": "npx",
 			"args": [
 				"-y",
-				"@supabase/mcp-server-supabase@latest"
+				"@supabase/mcp-server-supabase",
+				"--read-only",
+				"--project-ref=ikhqonotdjhstxnrcvld"
 			],
 			"env": {
 				"SUPABASE_ACCESS_TOKEN": "sbp_805e0f3df53b7fca870b3e0c923e800e89140e7f"

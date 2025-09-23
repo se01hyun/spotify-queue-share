@@ -152,6 +152,9 @@ export type Database = {
         }
       }
     }
+    Enums: {
+      // Add enums here if needed in the future
+    }
   }
 }
 
