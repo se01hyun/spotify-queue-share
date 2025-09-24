@@ -4,7 +4,7 @@
   "description": "Real-time collaborative music queue sharing web app for drives, trips, and parties. Join via link or QR code to search and add songs without login or app installation.",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

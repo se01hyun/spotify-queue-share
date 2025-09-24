@@ -16,6 +16,14 @@ const SPOTIFY_SCOPES = [
   'streaming'
 ].join(' ')
 
+// Debug environment variables
+console.log('Environment check:', {
+  SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID ? 'Set' : 'Missing',
+  SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET ? 'Set' : 'Missing',
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'Set' : 'Missing'
+})
+
 export const authOptions: AuthOptions = {
   providers: [
     SpotifyProvider({
@@ -28,6 +36,8 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
   // adapter: SupabaseAdapter({
   //   url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
   //   secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
