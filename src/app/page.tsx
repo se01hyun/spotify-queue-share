@@ -1,10 +1,46 @@
+
 'use client'
 
-import { useSession, signIn } from 'next-auth/react'
-import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import { useSessionContext } from '@/contexts/SessionContext'
+import NowPlaying from '@/components/NowPlaying'
+import MusicSearch from '@/components/MusicSearch'
+import MusicQueue from '@/components/MusicQueue'
+import SessionManager from '@/components/SessionManager'
+import GuestJoinForm from '@/components/GuestJoinForm'
+import { useSessionSync } from '@/hooks/useSessionSync'
 
 export default function Home() {
   const { data: session, status } = useSession()
+  const [guestSession, setGuestSession] = useState<any>(null)
+  const searchParams = useSearchParams()
+  const { currentSession: ctxSession } = useSessionContext()
+
+  // 게스트 세션 복원 (새로고침 시 유지)
+  useEffect(() => {
+    try {
+      const savedGuestSession = localStorage.getItem('spotify_sync_guest_session')
+      if (savedGuestSession) {
+        const parsed = JSON.parse(savedGuestSession)
+        setGuestSession(parsed)
+      }
+    } catch (error) {
+      console.error('게스트 세션 복원 실패:', error)
+    }
+  }, [])
+
+  // 게스트 세션 저장
+  useEffect(() => {
+    if (guestSession) {
+      try {
+        localStorage.setItem('spotify_sync_guest_session', JSON.stringify(guestSession))
+      } catch (error) {
+        console.error('게스트 세션 저장 실패:', error)
+      }
+    }
+  }, [guestSession])
 
   if (status === 'loading') {
     return (
@@ -21,6 +57,178 @@ export default function Home() {
     )
   }
 
+  // SSR-safe: use searchParams snapshot provided by Next.js
+  const forceWelcome = searchParams?.get('welcome') === '1'
+
+  // 세션 동기화 설정: 컨텍스트 세션(호스트/게스트) 우선, 없으면 게스트 로컬 fallback
+  const currentSession = ctxSession || guestSession
+  const sessionCode = currentSession?.code
+  const isHost = currentSession?.isHost === true
+
+  // 세션 동기화 활성화
+  useSessionSync({ 
+    sessionCode: sessionCode || '', 
+    isHost 
+  })
+
+
+  // 세션에 참여한 게스트 또는 로그인된 사용자라면 대시보드 화면 표시 (단, welcome=1이면 랜딩 유지)
+  if (!forceWelcome && (currentSession || session)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white">
+        {/* Header with Profile */}
+        <header className="relative z-10 pt-8 pb-8">
+          <div className="container mx-auto px-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center shadow-xl mr-4">
+                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.84-.179-.959-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.361 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z"/>
+                  </svg>
+                </div>
+                <a href="/?welcome=1" className="text-2xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
+                  SpotifySync
+                </a>
+                {sessionCode && (
+                  <div className="ml-4 px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-full text-green-400 text-sm font-mono">
+                    {sessionCode}
+                  </div>
+                )}
+              </div>
+              
+              {/* User Profile */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center bg-gray-800/50 rounded-2xl px-4 py-2 backdrop-blur-sm border border-gray-700/50">
+                  {session?.user?.image ? (
+                    <img 
+                      src={session.user.image} 
+                      alt="Profile" 
+                      className="w-8 h-8 rounded-full mr-3"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-white font-bold text-sm">
+                        {session?.user?.name?.charAt(0) || (guestSession?.isHost ? 'H' : 'G')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-left">
+                    <div className="text-white font-medium text-sm">
+                      {session?.user?.name || (guestSession ? '게스트 사용자' : 'Unknown User')}
+                    </div>
+                    <div className="text-gray-400 text-xs">
+                      {session?.user?.email || (guestSession ? `세션: ${guestSession.code}` : '')}
+                    </div>
+                  </div>
+                </div>
+                
+                {session ? (
+                  <button
+                    onClick={() => signOut()}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 px-4 py-2 rounded-xl transition-all duration-200 border border-red-500/30 hover:border-red-500/50"
+                  >
+                    로그아웃
+                  </button>
+                ) : guestSession ? (
+                  <button
+                    onClick={() => {
+                      setGuestSession(null)
+                      localStorage.removeItem('spotify_sync_guest_session')
+                    }}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 px-4 py-2 rounded-xl transition-all duration-200 border border-red-500/30 hover:border-red-500/50"
+                  >
+                    세션 나가기
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => signIn('spotify')}
+                    className="bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 px-4 py-2 rounded-xl transition-all duration-200 border border-green-500/30 hover:border-green-500/50"
+                  >
+                    로그인
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Dashboard Content */}
+        <main className="relative z-10 container mx-auto px-6 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Welcome Section */}
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold mb-4">
+                {session ? (
+                  <>
+                    환영합니다, <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">{session.user?.name}</span>님! 🎵
+                  </>
+                ) : guestSession ? (
+                  <>
+                    <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">{guestSession.name}</span> 세션에 참여 중! 🎉
+                  </>
+                ) : (
+                  '환영합니다! 🎵'
+                )}
+              </h2>
+              <p className="text-gray-300 text-lg">
+                {session ? (
+                  '이제 음악 세션을 시작하거나 기존 세션에 참여할 수 있습니다.'
+                ) : guestSession ? (
+                  `${guestSession.hostName}님의 세션에서 함께 음악을 즐기세요!`
+                ) : (
+                  '음악 세션을 시작하거나 기존 세션에 참여할 수 있습니다.'
+                )}
+              </p>
+            </div>
+
+            {/* Session Manager - 로그인된 사용자만 */}
+            {session && (
+              <div className="mb-12">
+                <SessionManager />
+              </div>
+            )}
+
+            {/* Now Playing */}
+            <div className="mb-12">
+              <NowPlaying />
+            </div>
+
+            {/* Music Search */}
+            <div className="mb-12">
+              <MusicSearch />
+            </div>
+
+            {/* Music Queue */}
+            <div className="mb-12">
+              <MusicQueue />
+            </div>
+
+            {/* Session Info */}
+            <div className="bg-gray-900/30 backdrop-blur-xl rounded-3xl p-6 border border-gray-700/50">
+              <div className="flex items-center justify-center space-x-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-gray-300">
+                    {session ? '호스트 모드' : guestSession ? '게스트 모드' : '대기 중'}
+                  </span>
+                </div>
+                {sessionCode && (
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="text-gray-400">세션: {sessionCode}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // 랜딩 페이지 (비로그인 상태)
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white overflow-hidden">
       {/* Animated background elements */}
@@ -98,39 +306,11 @@ export default function Home() {
             </div>
 
             {/* Guest Card */}
-            <div className="group relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-pink-600 to-purple-600 rounded-3xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-              <div className="relative bg-gray-900/50 backdrop-blur-xl rounded-3xl p-8 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300">
-                <div className="flex items-center mb-6">
-                  <div className="w-14 h-14 bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl flex items-center justify-center mr-4 shadow-xl">
-                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-white mb-1">게스트로 참여</h3>
-                    <p className="text-gray-400 text-sm">로그인 불필요</p>
-                  </div>
-                </div>
-                <p className="text-gray-300 mb-8 leading-relaxed">
-                  세션 코드만 있으면 바로 참여할 수 있어요. 별도의 앱 설치나 로그인 없이 음악을 추가하고 즐기세요.
-                </p>
-                <Link href="/join">
-                  <button className="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl">
-                    <span className="flex items-center justify-center">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                      </svg>
-                      세션 참여하기
-                    </span>
-                  </button>
-                </Link>
-              </div>
-            </div>
+            <GuestJoinForm onJoinSuccess={(sessionData) => setGuestSession(sessionData)} />
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
             <div className="text-center group">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

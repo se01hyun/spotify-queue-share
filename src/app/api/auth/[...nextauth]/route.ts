@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth'
+import NextAuth, { AuthOptions } from 'next-auth'
 import SpotifyProvider from 'next-auth/providers/spotify'
 import { SupabaseAdapter } from '@auth/supabase-adapter'
 
@@ -16,7 +16,7 @@ const SPOTIFY_SCOPES = [
   'streaming'
 ].join(' ')
 
-const handler = NextAuth({
+export const authOptions: AuthOptions = {
   providers: [
     SpotifyProvider({
       clientId: process.env.SPOTIFY_CLIENT_ID!,
@@ -28,10 +28,10 @@ const handler = NextAuth({
       },
     }),
   ],
-  adapter: SupabaseAdapter({
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  }),
+  // adapter: SupabaseAdapter({
+  //   url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  //   secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  // }),
   callbacks: {
     async session({ session, token }) {
       if (token?.accessToken) {
@@ -47,6 +47,11 @@ const handler = NextAuth({
     },
     async jwt({ token, account, profile }) {
       // Persist the OAuth access_token and refresh_token to the token right after signin
+      console.log("--- JWT Callback ---");
+      console.log("Account:", account);
+      console.log("Profile:", profile);
+      console.log("Initial Token:", token);
+
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
@@ -61,6 +66,7 @@ const handler = NextAuth({
         token.profileImageUrl = profile.images?.[0]?.url
       }
 
+      console.log("Final Token:", token);
       return token
     },
   },
@@ -69,8 +75,10 @@ const handler = NextAuth({
     error: '/auth/error',
   },
   session: {
-    strategy: 'jwt',
+    strategy: 'jwt' as const,
   },
-})
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }

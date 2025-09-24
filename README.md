@@ -33,9 +33,43 @@ Anyone can join via **link or QR code** to search, add, and manage songs — no 
 
 **Clone the repo / 저장소 클론**
 ```bash
-git clone https://github.com/your-username/spotify-queue-share.git
+git clone https://github.com/se01hyun/spotify-queue-share.git
 cd spotify-queue-share
-`taskmaster mcp를 사용해서 supabase 설정 task를 진행해.  
-`단, context7 mcp를 반드시 참조해서 최신 문서를 기반으로 작성해.`
-`인증부터 차근차근 진행해`
-`supabase mcp를 활용해서 최신 버전으로 설치해 줘`
+```
+
+### 🔧 Environment Setup (환경 설정)
+
+1. **Copy environment template / 환경 설정 템플릿 복사**
+```bash
+cp .env.example .env.local
+```
+
+2. **Get API Keys / API 키 획득**
+
+   **Supabase Keys:**
+   - Visit [Supabase Dashboard](https://supabase.com/dashboard/project/ikhqonotdjhstxnrcvld/settings/api)
+   - Copy `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - Copy `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+
+   **Spotify Keys:**
+   - Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications)
+   - Create new app and get `Client ID` → `SPOTIFY_CLIENT_ID`
+   - Get `Client Secret` → `SPOTIFY_CLIENT_SECRET`
+
+   **NextAuth Secret:**
+   ```bash
+   openssl rand -base64 32
+   ```
+   Copy generated value → `NEXTAUTH_SECRET`
+
+3. **Install dependencies / 의존성 설치**
+```bash
+npm install
+```
+
+4. **Run development server / 개발 서버 실행**
+```bash
+npm run dev
+```
+
+Visit `http://localhost:3000` to see the app.
