@@ -56,13 +56,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to generate unique session code' }, { status: 500 })
     }
 
-    // 세션 생성
+    // 1) Ensure host user exists in users table (upsert by spotify_id)
+    const { data: hostUser, error: userError } = await supabase
+      .from('users')
+      .upsert({
+        spotify_id: String(session.user.id),
+        display_name: session.user.name || null,
+        email: (session.user as any).email || null,
+        profile_image_url: (session.user as any).image || null,
+      }, { onConflict: 'spotify_id' })
+      .select()
+      .single()
+
+    if (userError || !hostUser) {
+      console.error('Users upsert error:', userError)
+      return NextResponse.json({ error: 'Failed to upsert host user' }, { status: 500 })
+    }
+
+    // 2) Create session referencing host user uuid
     const { data: newSession, error: sessionError } = await supabase
       .from('sessions')
       .insert({
         join_code: code,
         session_name: sessionName.trim(),
-        host_user_id: session.user.id,
+        host_user_id: hostUser.id, // uuid from users table
+        spotify_access_token: (session as any).accessToken || null,
+        spotify_refresh_token: (session as any).refreshToken || null,
+        spotify_expires_at: (session as any).expiresAt
+          ? new Date((session as any).expiresAt * 1000).toISOString()
+          : null,
       })
       .select()
       .single()

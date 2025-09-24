@@ -188,10 +188,12 @@ export default function Home() {
               </div>
             )}
 
-            {/* Now Playing */}
-            <div className="mb-12">
-              <NowPlaying />
-            </div>
+            {/* Now Playing: 호스트 전용 */}
+            {session && (
+              <div className="mb-12">
+                <NowPlaying />
+              </div>
+            )}
 
             {/* Music Search */}
             <div className="mb-12">

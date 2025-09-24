@@ -110,9 +110,40 @@ export default function SessionManager() {
           
           <div className="bg-gray-800/50 rounded-lg p-4">
             <p className="text-green-400 text-sm mb-2">🎉 세션에 참여 중입니다!</p>
-            <p className="text-gray-300 text-sm">
-              친구들에게 세션 코드 <span className="font-mono font-bold">{currentSession.code}</span>를 공유하세요.
+            <p className="text-gray-300 text-sm mb-4">
+              친구들에게 세션 코드 <span className="font-mono font-bold">{currentSession.code}</span>를 공유하거나 아래 QR을 스캔해 참여할 수 있어요.
             </p>
+
+            {(() => {
+              const configuredPublicUrl = process.env.NEXT_PUBLIC_PUBLIC_URL
+              const origin = configuredPublicUrl && configuredPublicUrl.length > 0
+                ? configuredPublicUrl
+                : (typeof window !== 'undefined' ? window.location.origin : '')
+              const joinUrl = `${origin}/join?code=${currentSession.code}`
+              const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(joinUrl)}`
+              return (
+                <div className="flex items-center gap-4">
+                  <img
+                    src={qrSrc}
+                    alt="세션 참여 QR"
+                    className="w-[180px] h-[180px] rounded-md border border-gray-700 bg-white"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <div className="text-xs text-gray-400">참여 링크</div>
+                    <div className="text-sm break-all bg-gray-900/60 border border-gray-700 rounded-md p-2">
+                      {joinUrl}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(joinUrl)}
+                      className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm"
+                    >
+                      링크 복사
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       ) : (
@@ -131,12 +162,12 @@ export default function SessionManager() {
               {authSession && (
                 <button
                   onClick={() => setShowCreateForm(true)}
-                  className="px-3 py-2 rounded-lg transition-colors bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 text-sm flex items-center justify-center space-x-2"
+                  className="mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-full transition-colors bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-sm shadow-lg hover:shadow-xl max-w-[180px]"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
                   </svg>
-                  <span className="font-medium">세션 생성</span>
+                  <span className="font-semibold tracking-tight">세션 생성</span>
                 </button>
               )}
 
@@ -150,7 +181,7 @@ export default function SessionManager() {
                   className="px-3 py-2 rounded-lg transition-colors bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 text-sm flex items-center justify-center space-x-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1 7 21 9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                   <span className="font-medium">세션 참여</span>
                 </button>
@@ -176,12 +207,15 @@ export default function SessionManager() {
                   disabled={loading}
                 />
               </div>
-              <div className="flex space-x-3">
+              <div className="flex gap-3">
                 <button
                   type="submit"
                   disabled={loading || !sessionName.trim()}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700/50 text-white font-medium py-2 rounded-md transition-colors text-sm"
+                  className="inline-flex items-center justify-center gap-2 flex-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-2.5 transition-all shadow-lg hover:shadow-xl"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+                  </svg>
                   {loading ? '생성 중...' : '세션 만들기'}
                 </button>
                 <button
@@ -191,8 +225,11 @@ export default function SessionManager() {
                     setSessionName('')
                     setError(null)
                   }}
-                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors text-sm"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full border border-gray-600 bg-gray-800/60 hover:bg-gray-700 text-white font-medium transition-colors shadow-sm"
                 >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                   취소
                 </button>
               </div>

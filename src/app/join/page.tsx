@@ -1,15 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useSessionContext } from '@/contexts/SessionContext'
 
 export default function JoinPage() {
   const [sessionCode, setSessionCode] = useState('')
   const [guestName, setGuestName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const { joinSession } = useSessionContext()
 
-  const handleJoin = () => {
-    // TODO: 세션 참여 로직 구현
-    console.log('Joining session:', sessionCode, 'as', guestName)
+  useEffect(() => {
+    const code = (searchParams.get('code') || '').toUpperCase()
+    if (code && code.length === 6) {
+      setSessionCode(code)
+    }
+  }, [searchParams])
+
+  const handleJoin = async () => {
+    if (!sessionCode || !guestName || loading) return
+    setLoading(true)
+    setError(null)
+
+    try {
+      await joinSession(sessionCode, guestName)
+      router.push('/guest')
+    } catch (e) {
+      setError('네트워크 오류가 발생했습니다')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -81,12 +105,28 @@ export default function JoinPage() {
               </div>
 
               {/* Join Button */}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl px-4 py-3 text-sm">
+                  {error}
+                </div>
+              )}
+
               <button
                 onClick={handleJoin}
-                disabled={!sessionCode || !guestName}
-                className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-200 text-base shadow-lg hover:shadow-xl"
+                disabled={!sessionCode || !guestName || loading}
+                className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-200 text-base shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
-                {sessionCode && guestName ? '세션 참여하기' : '닉네임과 세션 코드를 입력하세요'}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>참여 중...</span>
+                  </>
+                ) : (
+                  <span>{sessionCode && guestName ? '세션 참여하기' : '닉네임과 세션 코드를 입력하세요'}</span>
+                )}
               </button>
             </div>
           </div>

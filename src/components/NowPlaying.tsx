@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSessionContext } from '@/contexts/SessionContext'
 
 interface Track {
   id: string
@@ -26,16 +27,17 @@ interface NowPlayingData {
 
 export default function NowPlaying() {
   const { data: session } = useSession()
+  const { currentSession } = useSessionContext()
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [controlLoading, setControlLoading] = useState(false)
 
   const fetchNowPlaying = async () => {
-    if (!session) return
+    const params = !session && currentSession?.code ? `?code=${currentSession.code}` : ''
 
     try {
-      const response = await fetch('/api/spotify/currently-playing')
+      const response = await fetch(`/api/spotify/currently-playing${params}`)
       if (response.ok) {
         const data = await response.json()
         setNowPlaying(data)
@@ -89,7 +91,7 @@ export default function NowPlaying() {
     }
   }, [session])
 
-  if (!session) return null
+  const isHost = Boolean(session)
 
   if (loading) {
     return (
@@ -191,34 +193,40 @@ export default function NowPlaying() {
           </div>
         </div>
 
-        {/* 재생 컨트롤 */}
+        {/* 재생 컨트롤 (호스트 전용) */}
         <div className="text-center">
-          <button
-            onClick={handlePlayPause}
-            disabled={controlLoading}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 ${
-              isPlaying 
-                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50'
-            } ${controlLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-          >
-            {controlLoading ? (
-              <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            ) : isPlaying ? (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-              </svg>
-            ) : (
-              <svg className="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            )}
-          </button>
-          <p className="text-xs text-gray-400 mt-2">
-            {isPlaying ? '일시정지' : '재생'}
-          </p>
+          {isHost ? (
+            <>
+              <button
+                onClick={handlePlayPause}
+                disabled={controlLoading}
+                className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  isPlaying 
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
+                    : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50'
+                } ${controlLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+              >
+                {controlLoading ? (
+                  <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                ) : isPlaying ? (
+                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                ) : (
+                  <svg className="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                )}
+              </button>
+              <p className="text-xs text-gray-400 mt-2">
+                {isPlaying ? '일시정지' : '재생'}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-gray-500">호스트만 재생 제어가 가능합니다</p>
+          )}
           {device && (
             <p className="text-xs text-gray-500 mt-1">
               {device.name}

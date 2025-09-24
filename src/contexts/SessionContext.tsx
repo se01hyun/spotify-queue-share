@@ -47,7 +47,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [currentSession])
 
   const createSession = async (sessionName: string): Promise<SessionInfo> => {
-    const response = await fetch('/api/sessions/create-local', {
+    const response = await fetch('/api/sessions/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const joinSession = async (sessionCode: string, userName: string): Promise<SessionInfo> => {
     console.log('🔄 Joining session:', sessionCode, 'as', userName)
     
-    const response = await fetch('/api/sessions/join-local', {
+    const response = await fetch('/api/sessions/join', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
