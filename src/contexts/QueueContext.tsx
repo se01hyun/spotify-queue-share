@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { useSessionContext } from './SessionContext'
 
 export interface QueueTrack {
   id: string
@@ -33,6 +34,7 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined)
 
 export function QueueProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<QueueTrack[]>([])
+  const { currentSession } = useSessionContext()
 
   // Load queue from localStorage on mount
   useEffect(() => {
@@ -57,12 +59,13 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [queue])
 
-  const addToQueue = (track: Omit<QueueTrack, 'addedAt'>) => {
+  const addToQueue = async (track: Omit<QueueTrack, 'addedAt'>) => {
     const newTrack: QueueTrack = {
       ...track,
       addedAt: new Date(),
     }
     
+    // 로컬 큐에 추가
     setQueue(prev => {
       // 이미 큐에 있는 곡인지 확인
       if (prev.some(t => t.id === track.id)) {
@@ -70,6 +73,41 @@ export function QueueProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, newTrack]
     })
+
+    // Spotify 큐에도 추가 (호스트 기기의 실제 큐에 반영)
+    try {
+      console.log('🎵 Adding to Spotify queue:', {
+        trackUri: `spotify:track:${track.id}`,
+        sessionCode: currentSession?.code,
+        isHost: currentSession?.isHost,
+        fullCurrentSession: currentSession
+      })
+
+      const response = await fetch('/api/spotify/add-to-queue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          trackUri: `spotify:track:${track.id}`,
+          sessionCode: currentSession?.code // 게스트가 세션에 참여한 경우 세션 코드 전달
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Failed to add to Spotify queue:', {
+          status: response.status,
+          error: errorData
+        })
+        alert(`Spotify 큐 추가 실패: ${errorData.error || '알 수 없는 오류'}`)
+      } else {
+        console.log('✅ Successfully added to Spotify queue!')
+      }
+    } catch (error) {
+      console.error('❌ Error adding to Spotify queue:', error)
+      alert('Spotify 큐 추가 중 오류가 발생했습니다.')
+    }
   }
 
   const removeFromQueue = (trackId: string) => {

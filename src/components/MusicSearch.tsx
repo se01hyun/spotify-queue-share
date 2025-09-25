@@ -156,13 +156,13 @@ export default function MusicSearch() {
     }
   }
 
-  const handleAddToQueue = (track: Track) => {
+  const handleAddToQueue = async (track: Track) => {
     if (isInQueue(track.id)) {
       alert(`"${track.name}"은(는) 이미 큐에 있습니다!`)
       return
     }
 
-    addToQueue({
+    await addToQueue({
       id: track.id,
       name: track.name,
       artists: track.artists,
