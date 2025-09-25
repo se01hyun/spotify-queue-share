@@ -25,27 +25,54 @@ interface NowPlayingData {
   }
 }
 
-export default function NowPlaying() {
+interface NowPlayingProps {
+  currentSession?: any
+}
+
+export default function NowPlaying({ currentSession: propCurrentSession }: NowPlayingProps = {}) {
   const { data: session } = useSession()
-  const { currentSession } = useSessionContext()
+  const { currentSession: contextCurrentSession } = useSessionContext()
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [controlLoading, setControlLoading] = useState(false)
 
+  // props로 받은 currentSession 우선, 없으면 context 사용
+  const currentSession = propCurrentSession || contextCurrentSession
+
+  // 간단한 테스트 렌더링
+  console.log('NowPlaying 컴포넌트 렌더링됨!', { 
+    session: !!session, 
+    currentSession: !!currentSession,
+    sessionCode: currentSession?.code 
+  })
+
   const fetchNowPlaying = async () => {
     const params = !session && currentSession?.code ? `?code=${currentSession.code}` : ''
+    
+    // 디버깅용 로그
+    console.log('NowPlaying fetchNowPlaying:', {
+      session: !!session,
+      currentSessionCode: currentSession?.code,
+      params
+    })
 
     try {
       const response = await fetch(`/api/spotify/currently-playing${params}`)
+      console.log('NowPlaying response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('NowPlaying data:', data)
         setNowPlaying(data)
         setError(null)
       } else {
+        const errorData = await response.json()
+        console.error('NowPlaying API error:', errorData)
         setError('음악 정보를 가져올 수 없습니다')
       }
     } catch (err) {
+      console.error('NowPlaying fetch error:', err)
       setError('네트워크 오류가 발생했습니다')
     } finally {
       setLoading(false)
@@ -83,13 +110,14 @@ export default function NowPlaying() {
   }
 
   useEffect(() => {
-    if (session) {
+    // 호스트(session 있음) 또는 게스트(currentSession 있음) 모두 처리
+    if (session || currentSession) {
       fetchNowPlaying()
       // 10초마다 업데이트
       const interval = setInterval(fetchNowPlaying, 10000)
       return () => clearInterval(interval)
     }
-  }, [session])
+  }, [session, currentSession])
 
   const isHost = Boolean(session)
 

@@ -188,10 +188,10 @@ export default function Home() {
               </div>
             )}
 
-            {/* Now Playing: 호스트 전용 */}
-            {session && (
+            {/* Now Playing: 호스트 또는 게스트 세션 참여 시 */}
+            {(session || (currentSession && !currentSession.isHost)) && (
               <div className="mb-12">
-                <NowPlaying />
+                <NowPlaying currentSession={currentSession} />
               </div>
             )}
 
