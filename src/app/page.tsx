@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useSessionContext } from '@/contexts/SessionContext'
 import NowPlaying from '@/components/NowPlaying'
@@ -14,33 +14,9 @@ import { useSessionSync } from '@/hooks/useSessionSync'
 
 export default function Home() {
   const { data: session, status } = useSession()
-  const [guestSession, setGuestSession] = useState<any>(null)
   const searchParams = useSearchParams()
-  const { currentSession: ctxSession } = useSessionContext()
-
-  // 게스트 세션 복원 (새로고침 시 유지)
-  useEffect(() => {
-    try {
-      const savedGuestSession = localStorage.getItem('spotify_sync_guest_session')
-      if (savedGuestSession) {
-        const parsed = JSON.parse(savedGuestSession)
-        setGuestSession(parsed)
-      }
-    } catch (error) {
-      console.error('게스트 세션 복원 실패:', error)
-    }
-  }, [])
-
-  // 게스트 세션 저장
-  useEffect(() => {
-    if (guestSession) {
-      try {
-        localStorage.setItem('spotify_sync_guest_session', JSON.stringify(guestSession))
-      } catch (error) {
-        console.error('게스트 세션 저장 실패:', error)
-      }
-    }
-  }, [guestSession])
+  const router = useRouter()
+  const { currentSession, leaveSession } = useSessionContext()
 
   if (status === 'loading') {
     return (
@@ -60,8 +36,6 @@ export default function Home() {
   // SSR-safe: use searchParams snapshot provided by Next.js
   const forceWelcome = searchParams?.get('welcome') === '1'
 
-  // 세션 동기화 설정: 컨텍스트 세션(호스트/게스트) 우선, 없으면 게스트 로컬 fallback
-  const currentSession = ctxSession || guestSession
   const sessionCode = currentSession?.code
   const isHost = currentSession?.isHost === true
 
@@ -71,9 +45,21 @@ export default function Home() {
     isHost 
   })
 
+  // 호스트가 로그인했을 때 /host 페이지로 자동 리다이렉트
+  useEffect(() => {
+    if (session && !currentSession) {
+      // 호스트가 로그인했고 세션이 없으면 /host로 리다이렉트
+      router.push('/host')
+    } else if (!session && currentSession && !currentSession.isHost) {
+      // 게스트가 세션에 참여했으면 /guest로 리다이렉트 (단, 현재 페이지가 /guest가 아닐 때만)
+      if (window.location.pathname !== '/guest') {
+        router.push('/guest')
+      }
+    }
+  }, [session, currentSession, router])
 
-  // 세션에 참여한 게스트 또는 로그인된 사용자라면 대시보드 화면 표시 (단, welcome=1이면 랜딩 유지)
-  if (!forceWelcome && (currentSession || session)) {
+  // 대시보드 표시 조건: 게스트가 세션에 참여한 경우만
+  if (currentSession && !currentSession.isHost) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white">
         {/* Header with Profile */}
@@ -101,23 +87,23 @@ export default function Home() {
                 <div className="flex items-center bg-gray-800/50 rounded-2xl px-4 py-2 backdrop-blur-sm border border-gray-700/50">
                   {session?.user?.image ? (
                     <img 
-                      src={session.user.image} 
+                      src={session?.user?.image || ''} 
                       alt="Profile" 
                       className="w-8 h-8 rounded-full mr-3"
                     />
                   ) : (
                     <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
                       <span className="text-white font-bold text-sm">
-                        {session?.user?.name?.charAt(0) || (guestSession?.isHost ? 'H' : 'G')}
+                        {session?.user?.name?.charAt(0) || (currentSession?.isHost ? 'H' : 'G')}
                       </span>
                     </div>
                   )}
                   <div className="text-left">
                     <div className="text-white font-medium text-sm">
-                      {session?.user?.name || (guestSession ? '게스트 사용자' : 'Unknown User')}
+                      {session?.user?.name || (currentSession ? '게스트 사용자' : 'Unknown User')}
                     </div>
                     <div className="text-gray-400 text-xs">
-                      {session?.user?.email || (guestSession ? `세션: ${guestSession.code}` : '')}
+                      {session?.user?.email || (currentSession ? `세션: ${currentSession.code}` : '')}
                     </div>
                   </div>
                 </div>
@@ -129,11 +115,13 @@ export default function Home() {
                   >
                     로그아웃
                   </button>
-                ) : guestSession ? (
+                ) : currentSession ? (
                   <button
                     onClick={() => {
-                      setGuestSession(null)
-                      localStorage.removeItem('spotify_sync_guest_session')
+                      // SessionContext 초기화
+                      leaveSession()
+                      // 페이지 새로고침으로 완전 초기화
+                      window.location.reload()
                     }}
                     className="bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 px-4 py-2 rounded-xl transition-all duration-200 border border-red-500/30 hover:border-red-500/50"
                   >
@@ -160,11 +148,11 @@ export default function Home() {
               <h2 className="text-4xl font-bold mb-4">
                 {session ? (
                   <>
-                    환영합니다, <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">{session.user?.name}</span>님! 🎵
+                    환영합니다, <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">{session?.user?.name}</span>님! 🎵
                   </>
-                ) : guestSession ? (
+                ) : currentSession ? (
                   <>
-                    <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">{guestSession.name}</span> 세션에 참여 중! 🎉
+                    <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">{currentSession.name}</span> 세션에 참여 중! 🎉
                   </>
                 ) : (
                   '환영합니다! 🎵'
@@ -173,8 +161,8 @@ export default function Home() {
               <p className="text-gray-300 text-lg">
                 {session ? (
                   '이제 음악 세션을 시작하거나 기존 세션에 참여할 수 있습니다.'
-                ) : guestSession ? (
-                  `${guestSession.hostName}님의 세션에서 함께 음악을 즐기세요!`
+                ) : currentSession ? (
+                  `${currentSession.hostName}님의 세션에서 함께 음악을 즐기세요!`
                 ) : (
                   '음악 세션을 시작하거나 기존 세션에 참여할 수 있습니다.'
                 )}
@@ -211,7 +199,7 @@ export default function Home() {
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-gray-300">
-                    {session ? '호스트 모드' : guestSession ? '게스트 모드' : '대기 중'}
+                    {session ? '호스트 모드' : currentSession ? '게스트 모드' : '대기 중'}
                   </span>
                 </div>
                 {sessionCode && (
@@ -308,7 +296,7 @@ export default function Home() {
             </div>
 
             {/* Guest Card */}
-            <GuestJoinForm onJoinSuccess={(sessionData) => setGuestSession(sessionData)} />
+            <GuestJoinForm />
           </div>
 
           {/* Features */}

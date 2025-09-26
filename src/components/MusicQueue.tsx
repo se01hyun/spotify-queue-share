@@ -2,10 +2,12 @@
 
 import { useQueue } from '@/contexts/QueueContext'
 import { useSession } from 'next-auth/react'
+import { useSessionContext } from '@/contexts/SessionContext'
 
 export default function MusicQueue() {
   const { data: session } = useSession()
-  const { queue, removeFromQueue, clearQueue } = useQueue()
+  const { queue, removeFromQueue, clearQueue, syncWithSpotifyQueue, manualSync } = useQueue()
+  const { currentSession } = useSessionContext()
 
   const openInSpotify = (spotifyUrl: string) => {
     window.open(spotifyUrl, '_blank')
@@ -28,7 +30,7 @@ export default function MusicQueue() {
         <h3 className="text-2xl font-bold">Queue</h3>
         <div className="flex items-center space-x-2">
           <span className="text-gray-400 text-sm">{queue.length} tracks</span>
-          {queue.length > 0 && (
+          {queue.length > 0 && session && (
             <>
               <button
                 onClick={playAllInSpotify}

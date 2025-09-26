@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const code = (url.searchParams.get('code') || '').toUpperCase()
     
-    console.log('=== Currently Playing API Debug ===')
+    console.log('=== Spotify Queue API Debug ===')
     console.log('Request URL:', request.url)
     console.log('Session code:', code)
 
@@ -45,42 +45,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
 
-    console.log('Calling Spotify API...')
-    const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+    console.log('Calling Spotify API for player state...')
+    
+    // Spotify API로 현재 재생 상태만 가져오기 (큐 API는 존재하지 않음)
+    const playerResponse = await fetch('https://api.spotify.com/v1/me/player', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     })
 
-    console.log('Spotify API response status:', response.status)
+    console.log('Spotify player API response status:', playerResponse.status)
 
-    if (response.status === 204 || response.status === 202) {
-      console.log('No content - not playing')
-      return NextResponse.json({ isPlaying: false, item: null })
+    if (playerResponse.status === 204 || playerResponse.status === 202) {
+      console.log('No active device')
+      return NextResponse.json({ 
+        hasActiveDevice: false,
+        queue: [],
+        currentlyPlaying: null
+      })
     }
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Spotify API error:', response.status, response.statusText, errorText)
-      return NextResponse.json({ error: 'Spotify API error', details: errorText }, { status: response.status })
+    if (!playerResponse.ok) {
+      const errorText = await playerResponse.text()
+      console.error('Spotify player API error:', playerResponse.status, playerResponse.statusText, errorText)
+      return NextResponse.json({ error: 'Spotify API error', details: errorText }, { status: playerResponse.status })
     }
 
-    const data = await response.json()
+    const playerData = await playerResponse.json()
     
+    // Spotify API는 큐 정보를 직접 제공하지 않으므로 빈 큐 반환
+    // 실제 큐 관리는 웹 애플리케이션에서 담당
     return NextResponse.json({
-      isPlaying: data.is_playing,
-      item: data.item,
-      progress: data.progress_ms,
-      device: data.device,
+      hasActiveDevice: true,
+      queue: [], // 항상 빈 큐 반환 (웹에서 관리)
+      currentlyPlaying: playerData.item,
+      isPlaying: playerData.is_playing,
+      device: playerData.device
     })
   } catch (error) {
-    console.error('Error fetching currently playing:', error)
+    console.error('Error fetching Spotify queue:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
-
-
-
-
-

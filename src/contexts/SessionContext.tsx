@@ -80,14 +80,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({ sessionCode, userName }),
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error('❌ Join session error:', error)
-      throw new Error(error.error || 'Failed to join session')
+      let parsed: any = null
+      let rawText = ''
+      try {
+        parsed = await response.json()
+      } catch {
+        try {
+          rawText = await response.text()
+        } catch {}
+      }
+      const message = parsed?.error || parsed?.message || rawText || `HTTP ${response.status} ${response.statusText}`
+      console.error('❌ Join session error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: parsed ?? rawText,
+      })
+      throw new Error(message)
     }
 
     const data = await response.json()

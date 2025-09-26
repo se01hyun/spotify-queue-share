@@ -22,15 +22,18 @@ export default function JoinPage() {
   }, [searchParams])
 
   const handleJoin = async () => {
-    if (!sessionCode || !guestName || loading) return
+    const code = (sessionCode || '').toUpperCase().trim()
+    const name = (guestName || '').trim()
+    if (!code || code.length !== 6 || !name || loading) return
     setLoading(true)
     setError(null)
 
     try {
-      await joinSession(sessionCode, guestName)
-      router.push('/guest')
+      await joinSession(code, name)
+      router.push('/guest') // 게스트는 게스트 전용 페이지로 이동
     } catch (e) {
-      setError('네트워크 오류가 발생했습니다')
+      const message = e instanceof Error ? e.message : '네트워크 오류가 발생했습니다'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -113,7 +116,7 @@ export default function JoinPage() {
 
               <button
                 onClick={handleJoin}
-                disabled={!sessionCode || !guestName || loading}
+                disabled={!sessionCode.trim() || sessionCode.trim().length !== 6 || !guestName.trim() || loading}
                 className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-2xl transition-all duration-200 text-base shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
                 {loading ? (

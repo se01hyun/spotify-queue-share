@@ -77,16 +77,49 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
   }, [session])
 
   const fetchNowPlaying = useCallback(async () => {
-    // 호스트만 API 호출 가능 (session이 있어야 함)
+    // 세션이 없으면 게스트용 API 사용
+    if (!session && currentSession) {
+      console.log('NowPlaying: Fetching for guest via session API')
+      try {
+        const response = await fetch(`/api/sessions/now-playing?code=${currentSession.code}`)
+        console.log('NowPlaying guest response status:', response.status)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('NowPlaying guest data:', data)
+          
+          if (data.hasActiveDevice) {
+            setNowPlaying({
+              isPlaying: data.isPlaying,
+              item: data.item,
+              progress: data.progress,
+              device: data.device
+            })
+            setError(null)
+          } else {
+            setError('호스트의 기기가 활성화되지 않았습니다.')
+          }
+        } else {
+          setError('재생 정보를 가져올 수 없습니다.')
+        }
+      } catch (error) {
+        console.error('NowPlaying guest fetch error:', error)
+        setError('재생 정보를 가져올 수 없습니다.')
+      }
+      setLoading(false)
+      return
+    }
+
+    // 호스트인 경우 기존 로직 사용
     if (!session) {
-      console.log('NowPlaying: No host session, skipping fetch for guest')
+      console.log('NowPlaying: No session, skipping fetch')
       setError('호스트가 음악을 재생하면 여기에 표시됩니다.')
       setLoading(false)
       return
     }
 
     // 디버깅용 로그
-    console.log('NowPlaying fetchNowPlaying (host only):', {
+    console.log('NowPlaying fetchNowPlaying (host):', {
       session: !!session,
       currentSessionCode: currentSession?.code
     })
@@ -177,9 +210,12 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
       }, 10000)
       return () => clearInterval(interval)
     } else if (currentSession) {
-      // 게스트는 API 호출하지 않고 대기 메시지 표시
-      setError('호스트가 음악을 재생하면 여기에 표시됩니다.')
-      setLoading(false)
+      // 게스트도 호스트의 재생 상태를 폴링
+      fetchNowPlaying()
+      const interval = setInterval(() => {
+        fetchNowPlaying()
+      }, 10000)
+      return () => clearInterval(interval)
     }
   }, [session, currentSession?.code, fetchNowPlaying, checkDeviceStatus])
 

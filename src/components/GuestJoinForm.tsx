@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSessionContext } from '@/contexts/SessionContext'
 
 interface GuestJoinFormProps {
-  onJoinSuccess: (sessionData: any) => void
+  onJoinSuccess?: (sessionData: any) => void
 }
 
-export default function GuestJoinForm({ onJoinSuccess }: GuestJoinFormProps) {
+export default function GuestJoinForm({ onJoinSuccess }: GuestJoinFormProps = {}) {
+  const router = useRouter()
+  const { joinSession } = useSessionContext()
   const [showForm, setShowForm] = useState(false)
   const [sessionCode, setSessionCode] = useState('')
   const [userName, setUserName] = useState('')
@@ -51,32 +55,27 @@ export default function GuestJoinForm({ onJoinSuccess }: GuestJoinFormProps) {
       return
     }
 
+    if (sessionCode.trim().length !== 6) {
+      setError('세션 코드는 6자리여야 합니다!')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch('/api/sessions/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          sessionCode: sessionCode.trim(), 
-          userName: userName.trim() 
-        }),
-      })
+      // SessionContext의 joinSession 사용
+      const sessionData = await joinSession(sessionCode.trim(), userName.trim())
       
-      if (response.ok) {
-        const data = await response.json()
-        saveCode(sessionCode.trim()) // 성공한 코드 저장
-        onJoinSuccess(data.session)
-        setShowForm(false)
-        setSessionCode('')
-        setUserName('')
-      } else {
-        const error = await response.json()
-        setError(`참여 실패: ${error.error}`)
-      }
+      saveCode(sessionCode.trim()) // 성공한 코드 저장
+      onJoinSuccess?.(sessionData) // 기존 로직 유지 (옵셔널)
+      setShowForm(false)
+      setSessionCode('')
+      setUserName('')
+      // 게스트 전용 페이지로 이동
+      router.push('/guest')
     } catch (err) {
-      setError('네트워크 오류가 발생했습니다')
+      setError(`참여 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`)
     } finally {
       setLoading(false)
     }

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import { useQueue } from '@/contexts/QueueContext'
+import { useSessionContext } from '@/contexts/SessionContext'
 
 interface Track {
   id: string
@@ -29,12 +30,41 @@ interface SearchResults {
 export default function MusicSearch() {
   const { data: session } = useSession()
   const { addToQueue, isInQueue } = useQueue()
+  const { currentSession } = useSessionContext()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [playingPreview, setPlayingPreview] = useState<string | null>(null)
   const [playLoading, setPlayLoading] = useState<string | null>(null)
+
+  // 토큰 갱신 함수
+  const refreshToken = async () => {
+    try {
+      console.log('🔄 Attempting manual token refresh...')
+      
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include'
+      })
+      
+      const data = await response.json()
+      console.log('Refresh response:', data)
+      
+      if (response.ok && data.success) {
+        alert('토큰이 갱신되었습니다. 다시 시도해주세요.')
+        // 페이지 새로고침으로 세션 상태 업데이트
+        window.location.reload()
+      } else {
+        console.error('Token refresh failed:', data)
+        alert('토큰 갱신에 실패했습니다. 다시 로그인해주세요.')
+        window.location.href = '/api/auth/signin/spotify'
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error)
+      alert('토큰 갱신 중 오류가 발생했습니다.')
+    }
+  }
 
   const searchMusic = async (searchQuery: string) => {
     if (!searchQuery.trim()) return
@@ -162,6 +192,12 @@ export default function MusicSearch() {
       return
     }
 
+    // 세션 상태 확인
+    if (!currentSession) {
+      alert('세션에 참여한 후 음악을 추가할 수 있습니다.\n먼저 세션을 생성하거나 참여해주세요.')
+      return
+    }
+
     await addToQueue({
       id: track.id,
       name: track.name,
@@ -190,7 +226,19 @@ export default function MusicSearch() {
           placeholder="아티스트, 곡명, 앨범을 검색하세요..."
           className="w-full bg-gray-800/50 border border-gray-700 rounded-2xl px-6 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
         />
-        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+          {/* 토큰 갱신 버튼 */}
+          {session && (
+            <button
+              onClick={refreshToken}
+              className="p-2 text-gray-400 hover:text-green-400 transition-colors"
+              title="Spotify 토큰 갱신"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          )}
           {loading ? (
             <svg className="w-5 h-5 text-gray-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

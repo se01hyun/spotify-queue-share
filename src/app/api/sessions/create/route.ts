@@ -17,17 +17,27 @@ function generateSessionCode(): string {
   return result
 }
 
+
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== Session Create API Debug ===')
+    console.log('Environment check:')
+    console.log('- NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing')
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Set' : 'Missing')
+    
     const session = await getServerSession(authOptions)
+    console.log('Auth session:', session ? 'Found' : 'Not found')
     
     if (!session?.user) {
+      console.log('❌ Not authenticated')
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     const { sessionName } = await request.json()
+    console.log('Session name:', sessionName)
 
     if (!sessionName || sessionName.trim().length === 0) {
+      console.log('❌ Session name is required')
       return NextResponse.json({ error: 'Session name is required' }, { status: 400 })
     }
 
@@ -42,7 +52,7 @@ export async function POST(request: NextRequest) {
       const { data: existingSession } = await supabase
         .from('sessions')
         .select('id')
-        .eq('join_code', code)
+        .eq('code', code)
         .single()
 
       if (!existingSession) {
@@ -56,43 +66,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to generate unique session code' }, { status: 500 })
     }
 
-    // 1) Ensure host user exists in users table (upsert by spotify_id)
-    const { data: hostUser, error: userError } = await supabase
+    // users 테이블에서 해당 Spotify 사용자의 실제 ID 찾기
+    const { data: existingUser, error: userError } = await supabase
       .from('users')
-      .upsert({
-        spotify_id: String(session.user.id),
-        display_name: session.user.name || null,
-        email: (session.user as any).email || null,
-        profile_image_url: (session.user as any).image || null,
-      }, { onConflict: 'spotify_id' })
-      .select()
+      .select('id')
+      .eq('spotify_id', String(session.user.id))
       .single()
 
-    if (userError || !hostUser) {
-      console.error('Users upsert error:', userError)
-      return NextResponse.json({ error: 'Failed to upsert host user' }, { status: 500 })
+    if (userError || !existingUser) {
+      console.error('❌ User not found in users table:', userError)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // 2) Create session referencing host user uuid
+    const hostUserId = existingUser.id
+    
+    // 기존 테이블 구조에 맞게 세션 생성
+    console.log('Creating session with data:', {
+      join_code: code,
+      session_name: sessionName.trim(),
+      host_user_id: hostUserId,
+      original_spotify_id: String(session.user.id),
+    })
+    
     const { data: newSession, error: sessionError } = await supabase
       .from('sessions')
       .insert({
         join_code: code,
         session_name: sessionName.trim(),
-        host_user_id: hostUser.id, // uuid from users table
-        spotify_access_token: (session as any).accessToken || null,
-        spotify_refresh_token: (session as any).refreshToken || null,
-        spotify_expires_at: (session as any).expiresAt
-          ? new Date((session as any).expiresAt * 1000).toISOString()
-          : null,
+        host_user_id: hostUserId, // users 테이블의 실제 ID
+        // 호스트의 Spotify 토큰 저장(게스트 경로 자동 갱신/사용용)
+        spotify_access_token: (session as any)?.accessToken || null,
+        spotify_refresh_token: (session as any)?.refreshToken || null,
       })
       .select()
       .single()
 
     if (sessionError) {
-      console.error('Session creation error:', sessionError)
+      console.error('❌ Session creation error:', sessionError)
+      console.error('Error details:', JSON.stringify(sessionError, null, 2))
       return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
     }
+    
+    console.log('✅ Session created successfully:', newSession)
 
     // 호스트를 참가자로 추가
     const { error: participantError } = await supabase

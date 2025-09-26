@@ -4,6 +4,7 @@ declare module 'next-auth' {
   interface Session {
     accessToken?: string
     refreshToken?: string
+    error?: string
     user: {
       id: string
       name?: string | null
@@ -21,6 +22,7 @@ declare module 'next-auth' {
     spotifyId?: string
     displayName?: string
     profileImageUrl?: string
+    error?: string
   }
 
   interface Profile {
@@ -43,5 +45,6 @@ declare module 'next-auth/jwt' {
     spotifyId?: string
     displayName?: string
     profileImageUrl?: string
+    error?: string
   }
 }
