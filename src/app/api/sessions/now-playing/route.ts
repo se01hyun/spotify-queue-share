@@ -20,16 +20,40 @@ export async function GET(request: NextRequest) {
     }
 
     // 세션 찾기 (refresh 토큰도 함께 조회)
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('id, spotify_access_token, spotify_refresh_token')
-      .eq('join_code', code)
-      .is('ended_at', null)
-      .single()
+    let session: any = null
+    let sessionError: any = null
+    {
+      const res = await supabase
+        .from('sessions')
+        .select('id, spotify_access_token, spotify_refresh_token')
+        .eq('join_code', code)
+        .is('ended_at', null)
+        .single()
+      session = res.data
+      sessionError = res.error
+    }
+
+    // 일부 환경에서 컬럼명이 code 인 케이스 대비해 한번 더 시도
+    if (!session) {
+      const res2 = await supabase
+        .from('sessions')
+        .select('id, spotify_access_token, spotify_refresh_token')
+        .eq('code', code)
+        .is('ended_at', null)
+        .single()
+      if (res2.data) session = res2.data
+      if (!sessionError) sessionError = res2.error
+    }
 
     if (sessionError || !session) {
-      console.error('❌ Session not found:', sessionError)
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      console.error('❌ Session not found (join_code/code both failed):', sessionError)
+      // Fail-soft: 게스트 UI가 깨지지 않도록 200으로 비활성 상태 반환
+      return NextResponse.json({ 
+        hasActiveDevice: false,
+        isPlaying: false,
+        item: null,
+        progress: 0
+      }, { status: 200 })
     }
 
     console.log('✅ Session found:', session.id)

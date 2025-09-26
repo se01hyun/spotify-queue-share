@@ -36,7 +36,7 @@ async function refreshSpotifyAccessToken(refreshToken: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { trackUri, sessionCode } = body
+    const { trackUri, sessionCode, track } = body
 
     console.log('🎵 Add to Queue API called:', {
       trackUri,
@@ -236,6 +236,35 @@ export async function POST(request: NextRequest) {
         currentTrack: playerData.item?.name,
         queueLength: playerData.queue?.length || 'unknown'
       })
+    }
+
+    // 게스트 요청이면 DB의 session_queue에도 트랙 반영 (웹 큐 동기화 보장)
+    if (sessionCode && sessionId && track) {
+      try {
+        const item = {
+          session_id: sessionId,
+          track_id: track.id,
+          track_name: track.name,
+          track_artists: track.artists,
+          track_album: track.album,
+          track_duration_ms: track.duration_ms,
+          track_preview_url: track.preview_url,
+          track_spotify_url: track.external_urls?.spotify,
+          added_by_user_id: null,
+          added_by_name: track.addedBy || 'Guest',
+          position: 999999 // 맨 뒤로 (정렬 시 뒤로 가도록 큰 수)
+        }
+        const { error: insertError } = await supabase
+          .from('session_queue')
+          .insert([item])
+        if (insertError) {
+          console.error('❌ Failed to persist guest track to DB:', insertError)
+        } else {
+          console.log('✅ Guest track persisted to DB')
+        }
+      } catch (e) {
+        console.error('❌ Error persisting guest track to DB:', e)
+      }
     }
 
     return NextResponse.json({ success: true })
