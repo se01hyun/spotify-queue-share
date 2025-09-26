@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSessionContext } from '@/contexts/SessionContext'
 
@@ -25,6 +25,12 @@ interface NowPlayingData {
   }
 }
 
+interface DeviceStatus {
+  hasActiveDevice: boolean
+  deviceName?: string
+  deviceType?: string
+}
+
 interface NowPlayingProps {
   currentSession?: any
 }
@@ -36,6 +42,7 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [controlLoading, setControlLoading] = useState(false)
+  const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>({ hasActiveDevice: false })
 
   // props로 받은 currentSession 우선, 없으면 context 사용
   const currentSession = propCurrentSession || contextCurrentSession
@@ -47,19 +54,48 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
     sessionCode: currentSession?.code 
   })
 
-  const fetchNowPlaying = async () => {
-    const params = !session && currentSession?.code ? `?code=${currentSession.code}` : ''
-    
+  // 디바이스 상태 확인 함수
+  const checkDeviceStatus = useCallback(async () => {
+    if (!session) return
+
+    try {
+      const response = await fetch('/api/spotify/player')
+      if (response.ok) {
+        const data = await response.json()
+        setDeviceStatus({
+          hasActiveDevice: data.hasActiveDevice || false,
+          deviceName: data.device?.name,
+          deviceType: data.device?.type
+        })
+      } else {
+        setDeviceStatus({ hasActiveDevice: false })
+      }
+    } catch (error) {
+      console.error('Failed to check device status:', error)
+      setDeviceStatus({ hasActiveDevice: false })
+    }
+  }, [session])
+
+  const fetchNowPlaying = useCallback(async () => {
+    // 호스트만 API 호출 가능 (session이 있어야 함)
+    if (!session) {
+      console.log('NowPlaying: No host session, skipping fetch for guest')
+      setError('호스트가 음악을 재생하면 여기에 표시됩니다.')
+      setLoading(false)
+      return
+    }
+
     // 디버깅용 로그
-    console.log('NowPlaying fetchNowPlaying:', {
+    console.log('NowPlaying fetchNowPlaying (host only):', {
       session: !!session,
-      currentSessionCode: currentSession?.code,
-      params
+      currentSessionCode: currentSession?.code
     })
 
     try {
-      const response = await fetch(`/api/spotify/currently-playing${params}`)
+      console.log('NowPlaying fetch URL:', '/api/spotify/currently-playing')
+      const response = await fetch('/api/spotify/currently-playing')
       console.log('NowPlaying response status:', response.status)
+      console.log('NowPlaying response headers:', Object.fromEntries(response.headers.entries()))
       
       if (response.ok) {
         const data = await response.json()
@@ -67,9 +103,28 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
         setNowPlaying(data)
         setError(null)
       } else {
-        const errorData = await response.json()
-        console.error('NowPlaying API error:', errorData)
-        setError('음악 정보를 가져올 수 없습니다')
+        let errorData: any = {}
+        try {
+          errorData = await response.json()
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError)
+          errorData = { error: 'Unknown error occurred' }
+        }
+        
+        console.error('NowPlaying API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          url: '/api/spotify/currently-playing',
+          session: !!session
+        })
+        
+        // 401 에러인 경우 특별한 메시지 표시
+        if (response.status === 401) {
+          setError('Spotify 인증이 만료되었습니다. 다시 로그인해주세요.')
+        } else {
+          setError(`음악 정보를 가져올 수 없습니다 (${response.status})`)
+        }
       }
     } catch (err) {
       console.error('NowPlaying fetch error:', err)
@@ -77,7 +132,7 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
     } finally {
       setLoading(false)
     }
-  }
+  }, [session, currentSession?.code])
 
   const handlePlayPause = async () => {
     if (!session || !nowPlaying) return
@@ -110,14 +165,23 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
   }
 
   useEffect(() => {
-    // 호스트(session 있음) 또는 게스트(currentSession 있음) 모두 처리
-    if (session || currentSession) {
+    // 호스트만 API 호출 (session이 있어야 함)
+    if (session) {
+      // 디바이스 상태 확인
+      checkDeviceStatus()
       fetchNowPlaying()
       // 10초마다 업데이트
-      const interval = setInterval(fetchNowPlaying, 10000)
+      const interval = setInterval(() => {
+        checkDeviceStatus()
+        fetchNowPlaying()
+      }, 10000)
       return () => clearInterval(interval)
+    } else if (currentSession) {
+      // 게스트는 API 호출하지 않고 대기 메시지 표시
+      setError('호스트가 음악을 재생하면 여기에 표시됩니다.')
+      setLoading(false)
     }
-  }, [session, currentSession])
+  }, [session, currentSession?.code, fetchNowPlaying, checkDeviceStatus])
 
   const isHost = Boolean(session)
 
@@ -154,6 +218,35 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
     )
   }
 
+  // 디바이스가 없을 때 안내 메시지
+  if (isHost && !deviceStatus.hasActiveDevice) {
+    return (
+      <div className="bg-gray-900/30 backdrop-blur-xl rounded-3xl p-8 border border-gray-700/50">
+        <div className="text-center text-gray-400">
+          <svg className="w-16 h-16 mx-auto mb-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <h3 className="text-xl font-bold text-yellow-400 mb-2">Spotify 앱을 열어주세요</h3>
+          <p className="mb-4">음악을 재생하려면 Spotify 앱이 열려있어야 합니다.</p>
+          <div className="bg-gray-800/50 rounded-xl p-4 mb-4">
+            <p className="text-sm text-gray-300 mb-2">다음 중 하나를 시도해보세요:</p>
+            <ul className="text-sm text-gray-400 text-left space-y-1">
+              <li>• 휴대폰이나 컴퓨터에서 Spotify 앱을 열기</li>
+              <li>• Spotify 웹 플레이어 열기 (open.spotify.com)</li>
+              <li>• 다른 기기에서 Spotify 재생 중인지 확인</li>
+            </ul>
+          </div>
+          <button 
+            onClick={checkDeviceStatus}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            다시 확인
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!nowPlaying?.item) {
     return (
       <div className="bg-gray-900/30 backdrop-blur-xl rounded-3xl p-8 border border-gray-700/50">
@@ -163,6 +256,11 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
           </svg>
           <p>현재 재생 중인 음악이 없습니다</p>
           <p className="text-sm mt-2">Spotify에서 음악을 재생해보세요</p>
+          {deviceStatus.hasActiveDevice && (
+            <p className="text-xs mt-1 text-green-400">
+              활성 디바이스: {deviceStatus.deviceName} ({deviceStatus.deviceType})
+            </p>
+          )}
         </div>
       </div>
     )
