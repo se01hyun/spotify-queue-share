@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useQueue } from '@/contexts/QueueContext'
+import type { QueueTrack } from '@/contexts/QueueContext'
 
 interface SessionSyncProps {
   sessionCode: string
@@ -12,20 +13,23 @@ export function useSessionSync({ sessionCode, isHost }: SessionSyncProps) {
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const participantIdRef = useRef<string | null>(null)
 
+  // Server response queue item (at minimum must include addedAt)
+  type ServerQueueItem = Record<string, unknown> & { addedAt: string }
+
   // 큐 동기화 함수
   const syncQueue = async () => {
     try {
       const response = await fetch(`/api/sessions/sync?sessionCode=${sessionCode}`)
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json() as { lastUpdated: number; queue: ServerQueueItem[] }
         
         // 서버의 큐가 더 최신이면 업데이트
         if (data.lastUpdated > lastSyncRef.current) {
           // addedAt을 Date 객체로 변환
-          const normalizedQueue = data.queue.map((track: any) => ({
+          const normalizedQueue = data.queue.map((track: ServerQueueItem) => ({
             ...track,
             addedAt: new Date(track.addedAt)
-          }))
+          })) as unknown as QueueTrack[]
           setQueue(normalizedQueue)
           lastSyncRef.current = data.lastUpdated
         }

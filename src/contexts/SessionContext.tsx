@@ -10,6 +10,18 @@ export interface SessionInfo {
   isHost: boolean
 }
 
+// API response helpers
+type ApiError = { error?: string; message?: string }
+type JoinResponse = {
+  session: {
+    id: string
+    code: string
+    name: string
+    hostName: string
+    isHost: boolean
+  }
+}
+
 interface SessionContextType {
   currentSession: SessionInfo | null
   setCurrentSession: (session: SessionInfo | null) => void
@@ -86,10 +98,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     })
 
     if (!response.ok) {
-      let parsed: any = null
+      let parsed: ApiError | null = null
       let rawText = ''
       try {
-        parsed = await response.json()
+        parsed = (await response.json()) as ApiError
       } catch {
         try {
           rawText = await response.text()
@@ -104,7 +116,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       throw new Error(message)
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as JoinResponse
     console.log('✅ Join session response:', data)
     
     const sessionInfo: SessionInfo = {

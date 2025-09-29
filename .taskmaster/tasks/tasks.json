@@ -74,8 +74,40 @@
         "dependencies": [
           1
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement NextAuth + Spotify Provider",
+            "description": "Implement NextAuth with the Spotify provider and configure callbacks in `src/app/api/auth/[...nextauth]/route.ts`. Define necessary types in `src/types/next-auth.d.ts`.",
+            "dependencies": [],
+            "details": "Configure the Spotify provider within NextAuth.js. Implement the necessary callbacks to handle user authentication and authorization. Define custom types for user and session objects in `src/types/next-auth.d.ts` to include Spotify-specific data.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Persist Encrypted Tokens in Supabase",
+            "description": "Persist encrypted access and refresh tokens in Supabase. Integrate token storage into the NextAuth callbacks, reusing existing tables with minimal modifications.",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Modify the NextAuth callbacks to securely store the encrypted access and refresh tokens in the Supabase database. Utilize existing tables where possible, making only necessary adjustments to accommodate the token data. Ensure proper encryption of tokens before storing them.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement Token Refresh Flow",
+            "description": "Implement the token refresh flow using `src/app/api/auth/refresh/route.ts`. Create a server utility function if needed. Perform end-to-end testing with environment variables.",
+            "dependencies": [
+              "2.2"
+            ],
+            "details": "Create an API route (`src/app/api/auth/refresh/route.ts`) to handle token refresh requests. Implement the logic to exchange the refresh token for a new access token. If necessary, create a server utility function to encapsulate the token refresh logic. Conduct end-to-end testing using environment variables to simulate real-world scenarios.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 3,
@@ -218,7 +250,7 @@
     ],
     "metadata": {
       "created": "2025-09-23T08:00:40.515Z",
-      "updated": "2025-09-23T11:22:05.908Z",
+      "updated": "2025-09-29T10:49:54.415Z",
       "description": "Tasks for master context"
     }
   }
