@@ -22,9 +22,11 @@ Anyone can join via **link or QR code** to search, add, and manage songs — no 
 ---
 
 ## 🛠 Tech Stack (기술 스택)
-- **Frontend:** Next.js (App Router, Turbopack), Tailwind CSS  
-- **Backend:** Node.js / Express (optional API layer)  
-- **Database:** (Planned) Supabase / MySQL  
+- **Frontend:** Next.js 15 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS  
+- **Backend:** Next.js API Routes (Serverless Functions)  
+- **Database:** Supabase (PostgreSQL)  
+- **Authentication:** NextAuth.js (Spotify OAuth Provider)  
+- **Real-time:** Supabase Realtime  
 - **Other:** Spotify Web API, PWA (Progressive Web App)  
 
 ---
@@ -64,12 +66,42 @@ cp .env.example .env.local
 
 3. **Install dependencies / 의존성 설치**
 ```bash
-npm install
+pnpm install
 ```
 
 4. **Run development server / 개발 서버 실행**
 ```bash
-npm run dev
+pnpm dev
 ```
 
-Visit `http://localhost:3000` to see the app.
+Visit `http://localhost:3003` to see the app.
+
+---
+
+## 🚀 Deployment (배포)
+
+This project is configured for deployment on **Vercel**:
+
+```bash
+pnpm build
+```
+
+The Next.js App Router and API Routes will be automatically deployed as serverless functions on Vercel.
+
+**Environment Variables in Vercel:**
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SPOTIFY_CLIENT_ID`
+- `SPOTIFY_CLIENT_SECRET`
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
+
+---
+
+## 📝 Notes (참고사항)
+
+- **Port:** Development server runs on port `3003` (see `package.json`)
+- **Database:** Uses Supabase for PostgreSQL database and real-time subscriptions
+- **Authentication:** NextAuth.js handles Spotify OAuth authentication
+- **Real-time Sync:** Supabase Realtime is used for live queue updates
