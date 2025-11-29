@@ -79,14 +79,11 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
   const fetchNowPlaying = useCallback(async () => {
     // 세션이 없으면 게스트용 API 사용
     if (!session && currentSession) {
-      console.log('NowPlaying: Fetching for guest via session API')
       try {
         const response = await fetch(`/api/sessions/now-playing?code=${currentSession.code}`)
-        console.log('NowPlaying guest response status:', response.status)
         
         if (response.ok) {
           const data = await response.json()
-          console.log('NowPlaying guest data:', data)
           
           if (data.hasActiveDevice) {
             setNowPlaying({
@@ -112,27 +109,16 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
 
     // 호스트인 경우 기존 로직 사용
     if (!session) {
-      console.log('NowPlaying: No session, skipping fetch')
       setError('호스트가 음악을 재생하면 여기에 표시됩니다.')
       setLoading(false)
       return
     }
 
-    // 디버깅용 로그
-    console.log('NowPlaying fetchNowPlaying (host):', {
-      session: !!session,
-      currentSessionCode: currentSession?.code
-    })
-
     try {
-      console.log('NowPlaying fetch URL:', '/api/spotify/currently-playing')
       const response = await fetch('/api/spotify/currently-playing')
-      console.log('NowPlaying response status:', response.status)
-      console.log('NowPlaying response headers:', Object.fromEntries(response.headers.entries()))
       
       if (response.ok) {
         const data = await response.json()
-        console.log('NowPlaying data:', data)
         setNowPlaying(data)
         setError(null)
       } else {
@@ -143,14 +129,6 @@ export default function NowPlaying({ currentSession: propCurrentSession }: NowPl
           console.error('Failed to parse error response:', parseError)
           errorData = { error: 'Unknown error occurred' }
         }
-        
-        console.error('NowPlaying API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          url: '/api/spotify/currently-playing',
-          session: !!session
-        })
         
         // 401 에러인 경우 특별한 메시지 표시
         if (response.status === 401) {

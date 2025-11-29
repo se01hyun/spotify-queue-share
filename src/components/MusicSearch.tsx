@@ -41,15 +41,12 @@ export default function MusicSearch() {
   // 토큰 갱신 함수
   const refreshToken = async () => {
     try {
-      console.log('🔄 Attempting manual token refresh...')
-      
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
         credentials: 'include'
       })
       
       const data = await response.json()
-      console.log('Refresh response:', data)
       
       if (response.ok && data.success) {
         alert('토큰이 갱신되었습니다. 다시 시도해주세요.')
@@ -360,15 +357,12 @@ export default function MusicSearch() {
                   src={track.preview_url}
                   preload="none"
                   onEnded={() => {
-                    console.log('🔚 재생 완료:', track.id)
                     setPlayingPreview(null)
                   }}
                   onError={(e) => {
-                    console.error('❌ 오디오 로드 에러:', track.id, e)
+                    console.error('오디오 로드 에러:', track.id, e)
                     setPlayingPreview(null)
                   }}
-                  onLoadStart={() => console.log('⏳ 오디오 로드 시작:', track.id)}
-                  onCanPlay={() => console.log('✅ 오디오 재생 준비:', track.id)}
                 />
               )}
             </div>

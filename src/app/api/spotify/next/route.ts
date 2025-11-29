@@ -13,18 +13,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { sessionCode } = body
 
-    console.log('⏭️ Next Track API called:', {
-      sessionCode,
-      hasSessionCode: !!sessionCode
-    })
-
     let accessToken: string | null = null
 
     // 세션 코드가 있으면 DB에서 호스트 토큰 가져오기 (게스트 요청)
     if (sessionCode) {
-      console.log('🔍 Looking up session in DB for next track:', sessionCode.toUpperCase())
-      
-      const { data: dbSession, error: dbError } = await supabase
+      const { data: dbSession } = await supabase
         .from('sessions')
         .select('spotify_access_token, spotify_refresh_token')
         .eq('join_code', sessionCode.toUpperCase())
@@ -32,7 +25,6 @@ export async function POST(request: NextRequest) {
         .single()
       
       if (!dbSession) {
-        console.log('❌ Session not found in DB for next track')
         return NextResponse.json({ error: 'Session not found' }, { status: 404 })
       }
 
@@ -48,8 +40,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Spotify API로 다음 곡 재생
-    console.log('⏭️ Making Spotify API request for next track')
-
     const response = await fetch('https://api.spotify.com/v1/me/player/next', {
       method: 'POST',
       headers: {
@@ -59,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json()
-      console.error('❌ Spotify API error skipping to next track:', errorData)
+      console.error('Spotify API error skipping to next track:', errorData)
       
       if (response.status === 404) {
         return NextResponse.json({ 
@@ -72,7 +62,6 @@ export async function POST(request: NextRequest) {
       }, { status: response.status })
     }
 
-    console.log('✅ Successfully skipped to next track!')
     return NextResponse.json({ success: true })
 
   } catch (error) {

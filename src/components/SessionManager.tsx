@@ -8,11 +8,6 @@ export default function SessionManager() {
   const { data: authSession } = useNextAuthSession()
   const { currentSession, createSession, joinSession, leaveSession, isInSession } = useSessionContext()
   
-  console.log('🔄 SessionManager render:', { 
-    authSession: !!authSession, 
-    currentSession, 
-    isInSession 
-  })
   
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showJoinForm, setShowJoinForm] = useState(false)
@@ -42,12 +37,8 @@ export default function SessionManager() {
 
   const handleJoinSession = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('🎯 Form submitted!')
-    console.log('📝 Session code:', sessionCode.trim())
-    console.log('📝 User name:', userName.trim())
     
     if (!sessionCode.trim() || !userName.trim()) {
-      console.log('❌ Missing required fields')
       return
     }
 
@@ -55,17 +46,13 @@ export default function SessionManager() {
     setError(null)
 
     try {
-      console.log('🚀 Starting join session process...')
-      const result = await joinSession(sessionCode.trim().toUpperCase(), userName.trim())
-      console.log('🎉 Join session completed:', result)
+      await joinSession(sessionCode.trim().toUpperCase(), userName.trim())
       
       setSessionCode('')
       setUserName('')
       setShowJoinForm(false)
-      
-      console.log('📝 Form state cleared, should show session info now')
     } catch (err) {
-      console.error('💥 Join session failed:', err)
+      console.error('Join session failed:', err)
       setError(err instanceof Error ? err.message : 'Failed to join session')
     } finally {
       setLoading(false)
@@ -175,7 +162,6 @@ export default function SessionManager() {
               {!authSession && (
                 <button
                   onClick={() => {
-                    console.log('🔵 Join button clicked!')
                     setShowJoinForm(true)
                   }}
                   className="px-3 py-2 rounded-lg transition-colors bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 text-sm flex items-center justify-center space-x-2"
@@ -274,7 +260,6 @@ export default function SessionManager() {
                   type="submit"
                   disabled={loading || !sessionCode.trim() || !userName.trim()}
                   className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700/50 text-white font-medium py-2 rounded-md transition-colors text-sm"
-                  onClick={() => console.log('🟦 Submit button clicked!')}
                 >
                   {loading ? '참여 중...' : '세션 참여'}
                 </button>

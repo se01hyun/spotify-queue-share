@@ -86,8 +86,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   const joinSession = async (sessionCode: string, userName: string): Promise<SessionInfo> => {
-    console.log('🔄 Joining session:', sessionCode, 'as', userName)
-    
     const response = await fetch('/api/sessions/join', {
       method: 'POST',
       headers: {
@@ -108,16 +106,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
       const message = parsed?.error || parsed?.message || rawText || `HTTP ${response.status} ${response.statusText}`
-      console.error('❌ Join session error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: parsed ?? rawText,
-      })
+      console.error('Join session error:', message)
       throw new Error(message)
     }
 
     const data = (await response.json()) as JoinResponse
-    console.log('✅ Join session response:', data)
     
     const sessionInfo: SessionInfo = {
       id: data.session.id,
@@ -127,9 +120,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       isHost: data.session.isHost,
     }
 
-    console.log('🎯 Setting session info:', sessionInfo)
     setCurrentSession(sessionInfo)
-    console.log('✅ Session state updated!')
     
     return sessionInfo
   }

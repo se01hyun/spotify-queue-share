@@ -8,13 +8,6 @@ import MusicQueue from '@/components/MusicQueue'
 
 export default function GuestPage() {
   const { currentSession, isInSession, leaveSession } = useSessionContext()
-  
-  // 디버깅용 로그
-  console.log('GuestPage state:', {
-    isInSession,
-    currentSession,
-    hasCode: !!currentSession?.code
-  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white">

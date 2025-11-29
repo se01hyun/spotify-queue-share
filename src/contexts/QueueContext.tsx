@@ -62,8 +62,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     if (!currentSession?.isHost || !session || isClearing) return
 
     try {
-      console.log('🔄 Host sync: checking Spotify device and pulling DB queue...')
-
       // 1) Spotify 상태 확인 (활성 디바이스 여부 파악)
       const playerRes = await fetch('/api/spotify/queue')
 
@@ -83,25 +81,16 @@ export function QueueProvider({ children }: { children: ReactNode }) {
             const prevKey = prevQueue.map(t => t.id).join('|')
             const nextKey = normalizedNewQueue.map((t: any) => t.id).join('|')
             if (prevKey !== nextKey) {
-              console.log('✅ Host queue updated from DB (includes guest additions)')
               return normalizedNewQueue
             }
             return prevQueue
           })
-        } else {
-          console.log('⚠️ Failed to fetch session queue for host:', dbRes.status)
         }
       } catch (e) {
-        console.error('❌ Host failed to pull DB queue:', e)
-      }
-
-      // Spotify 응답은 활성 디바이스 확인 용도
-      if (playerRes.ok) {
-        const data = await playerRes.json()
-        console.log('📊 Spotify player data (host):', data)
+        console.error('Host failed to pull DB queue:', e)
       }
     } catch (error) {
-      console.error('❌ Failed to sync (host):', error)
+      console.error('Failed to sync (host):', error)
     }
   }
 
@@ -124,17 +113,11 @@ export function QueueProvider({ children }: { children: ReactNode }) {
         isSyncing = true
         
         try {
-          console.log('🔄 Syncing queue for guest:', currentSession.code)
           const response = await fetch(`/api/sessions/queue?code=${currentSession.code}`)
-          console.log('📡 Guest sync response status:', response.status)
           
           if (response.ok) {
             const data = await response.json()
             const newQueue = data.queue || []
-            console.log('✅ Queue synced successfully:', {
-              queueLength: newQueue.length,
-              tracks: newQueue.map((t: any) => ({ id: t.id, name: t.name }))
-            })
             
             // addedAt 필드를 Date 객체로 변환
             const normalizedNewQueue = newQueue.map((track: any) => ({
@@ -144,15 +127,8 @@ export function QueueProvider({ children }: { children: ReactNode }) {
             
             // 서버의 큐로 업데이트하되, 빈 큐인 경우 주의깊게 처리
             setQueue(prevQueue => {
-              console.log('🔄 Updating guest queue to server state:', {
-                prevLength: prevQueue.length,
-                newLength: normalizedNewQueue.length,
-                serverQueue: normalizedNewQueue.map((t: any) => ({ id: t.id, name: t.name }))
-              })
-              
               // 서버에서 빈 큐를 받았고, 현재 큐에 곡이 있는 경우
               if (normalizedNewQueue.length === 0 && prevQueue.length > 0) {
-                console.log('⚠️ Server returned empty queue, but local queue has tracks. Keeping local queue.')
                 return prevQueue
               }
               
@@ -162,17 +138,13 @@ export function QueueProvider({ children }: { children: ReactNode }) {
             lastSyncTime = Date.now()
             
           } else if (response.status === 404) {
-            console.log('⚠️ Session not found - clearing guest session')
             // 세션이 존재하지 않으면 게스트 세션 정리
             localStorage.removeItem('spotify_sync_guest_session')
             sessionStorage.removeItem('spotify_sync_guest_session')
             window.location.href = '/'
-          } else {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            console.log('⚠️ Queue sync failed:', response.status, errorText)
           }
         } catch (error) {
-          console.error('❌ Failed to sync queue:', error)
+          console.error('Failed to sync queue:', error)
         } finally {
           isSyncing = false
         }
@@ -190,7 +162,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   const addToQueue = async (track: Omit<QueueTrack, 'addedAt'>) => {
     // 중복 체크
     if (isInQueue(track.id)) {
-      console.log('⚠️ Track already in queue, skipping:', track.name)
       return
     }
     
@@ -201,7 +172,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     
     // 세션 상태 확인
     if (!currentSession) {
-      console.log('⚠️ No active session - only adding to local queue')
       // 로컬 큐에만 추가
       setQueue(prev => {
         if (prev.some(t => t.id === track.id)) {
@@ -219,12 +189,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     // 호스트인 경우 데이터베이스에 업데이트
     if (currentSession.isHost) {
       try {
-        console.log('🔄 Updating queue in database for host:', {
-          code: currentSession.code,
-          queueLength: updatedQueue.length,
-          trackName: newTrack.name
-        })
-        
         // 데이터베이스에 저장할 큐 데이터 준비
         const queueForDB = updatedQueue.map(track => ({
           id: track.id,
@@ -246,24 +210,16 @@ export function QueueProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ queue: queueForDB }),
         })
         
-        if (dbResponse.ok) {
-          console.log('✅ Queue updated in database successfully')
-        } else {
+        if (!dbResponse.ok) {
           const errorData = await dbResponse.json().catch(() => ({}))
-          console.error('❌ Database update failed:', dbResponse.status, errorData)
+          console.error('Database update failed:', dbResponse.status, errorData)
         }
       } catch (error) {
-        console.error('❌ Failed to update queue in database:', error)
+        console.error('Failed to update queue in database:', error)
       }
     }
 
     // Spotify 큐에도 추가 (호스트/게스트 모두 처리)
-    console.log('🔍 Preparing Spotify add-to-queue call:', {
-      hasSession: !!currentSession,
-      isHost: currentSession?.isHost,
-      sessionCode: currentSession?.code
-    })
-
     if (currentSession) {
       try {
         const isHost = currentSession.isHost && !!session
@@ -284,25 +240,12 @@ export function QueueProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        console.log('🎵 Adding to Spotify queue (host/guest):', {
-          ...requestBody,
-          isHost
-        })
-
         const response = await fetch('/api/spotify/add-to-queue', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(requestBody),
-        })
-
-        console.log('🔍 Spotify API Response Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          url: response.url,
-          ok: response.ok,
-          headers: Object.fromEntries(response.headers.entries())
         })
 
         if (!response.ok) {
@@ -313,12 +256,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
           console.error('Failed to parse error response:', parseError)
           errorData = { error: 'Unknown error occurred' }
         }
-        
-        console.error('❌ Failed to add to Spotify queue:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        })
         
         const errorMessage = errorData.error || `HTTP ${response.status} 오류`
         
@@ -335,30 +272,20 @@ export function QueueProvider({ children }: { children: ReactNode }) {
             alert(`Spotify Premium이 필요합니다.\nPremium 계정으로 로그인해주세요.`)
           } else if (response.status === 404 && errorMessage.includes('No active device')) {
             // 404 에러가 "No active device"인 경우 특별 처리
-            console.log('⚠️ No active Spotify device - queue will be synced when device is available')
             // 에러 알림을 표시하지 않고 조용히 처리 (큐는 여전히 데이터베이스에 저장됨)
           } else {
             alert(`Spotify 큐 추가 실패: ${errorMessage}`)
           }
-        } else {
-          // 성공 응답 파싱
-          try {
-            const successData = await response.json()
-            console.log('✅ Successfully added to Spotify queue!', successData)
-          } catch (parseError) {
-            // JSON 파싱 실패해도 성공으로 처리 (204 No Content 등)
-            console.log('✅ Successfully added to Spotify queue! (no response body)')
-          }
+        }
 
-          // 게스트인 경우 서버 큐를 재동기화하여 일관성 확보
-          if (!isHost) {
-            try {
-              await manualSync()
-            } catch {}
-          }
+        // 게스트인 경우 서버 큐를 재동기화하여 일관성 확보
+        if (!isHost) {
+          try {
+            await manualSync()
+          } catch {}
         }
       } catch (error) {
-        console.error('❌ Error adding to Spotify queue:', error)
+        console.error('Error adding to Spotify queue:', error)
         // Spotify API 호출 실패해도 큐는 데이터베이스에 저장되므로 계속 진행
       }
     }
@@ -372,11 +299,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     // 세션이 있고 호스트인 경우 데이터베이스에도 반영
     if (currentSession?.isHost) {
       try {
-        console.log('🔄 Updating queue in database after removal for host:', {
-          code: currentSession.code,
-          removedTrackId: trackId,
-          newQueueLength: updatedQueue.length
-        })
         await fetch(`/api/sessions/queue?code=${currentSession.code}`, {
           method: 'POST',
           headers: {
@@ -384,9 +306,8 @@ export function QueueProvider({ children }: { children: ReactNode }) {
           },
           body: JSON.stringify({ queue: updatedQueue }),
         })
-        console.log('✅ Queue updated in database after removal successfully')
       } catch (error) {
-        console.error('❌ Failed to update queue in database after removal:', error)
+        console.error('Failed to update queue in database after removal:', error)
       }
     }
   }
@@ -404,7 +325,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     // 세션이 있고 호스트인 경우 데이터베이스에서도 큐 클리어
     if (currentSession?.isHost) {
       try {
-        console.log('🔄 Clearing queue in database for host:', currentSession.code)
         await fetch(`/api/sessions/queue?code=${currentSession.code}`, {
           method: 'POST',
           headers: {
@@ -412,16 +332,14 @@ export function QueueProvider({ children }: { children: ReactNode }) {
           },
           body: JSON.stringify({ queue: [] }),
         })
-        console.log('✅ Queue cleared in database successfully')
       } catch (error) {
-        console.error('❌ Failed to clear queue in database:', error)
+        console.error('Failed to clear queue in database:', error)
       }
     }
     
     // 클리어 완료 후 3초 후에 동기화 재활성화
     setTimeout(() => {
       setIsClearing(false)
-      console.log('🔄 Queue clearing completed, sync re-enabled')
     }, 3000)
   }
 
@@ -435,12 +353,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     // 세션이 있고 호스트인 경우 데이터베이스에도 반영
     if (currentSession?.isHost) {
       try {
-        console.log('🔄 Updating queue in database after move for host:', {
-          code: currentSession.code,
-          fromIndex,
-          toIndex,
-          newQueueLength: newQueue.length
-        })
         await fetch(`/api/sessions/queue?code=${currentSession.code}`, {
           method: 'POST',
           headers: {
@@ -448,9 +360,8 @@ export function QueueProvider({ children }: { children: ReactNode }) {
           },
           body: JSON.stringify({ queue: newQueue }),
         })
-        console.log('✅ Queue updated in database after move successfully')
       } catch (error) {
-        console.error('❌ Failed to update queue in database after move:', error)
+        console.error('Failed to update queue in database after move:', error)
       }
     }
   }
@@ -465,16 +376,11 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     
     setIsManualSyncing(true)
     try {
-      console.log('🔄 Manual sync triggered by guest')
       const response = await fetch(`/api/sessions/queue?code=${currentSession.code}`)
       
       if (response.ok) {
         const data = await response.json()
         const newQueue = data.queue || []
-        console.log('✅ Manual sync successful:', {
-          queueLength: newQueue.length,
-          tracks: newQueue.map((t: any) => ({ id: t.id, name: t.name }))
-        })
         
         // addedAt 필드를 Date 객체로 변환
         const normalizedNewQueue = newQueue.map((track: any) => ({
@@ -485,10 +391,10 @@ export function QueueProvider({ children }: { children: ReactNode }) {
         // 큐 업데이트
         setQueue(normalizedNewQueue)
       } else {
-        console.error('❌ Manual sync failed:', response.status)
+        console.error('Manual sync failed:', response.status)
       }
     } catch (error) {
-      console.error('❌ Manual sync error:', error)
+      console.error('Manual sync error:', error)
     } finally {
       // 2초 후에 수동 동기화 상태 해제
       setTimeout(() => {

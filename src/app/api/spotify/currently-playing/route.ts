@@ -12,56 +12,40 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url)
     const code = (url.searchParams.get('code') || '').toUpperCase()
-    
-    console.log('=== Currently Playing API Debug ===')
-    console.log('Request URL:', request.url)
-    console.log('Session code:', code)
 
     let accessToken: string | null = null
 
     if (code && code.length === 6) {
-      console.log('Fetching token from DB for session code:', code)
-      const { data: dbSession, error: dbError } = await supabase
+      const { data: dbSession } = await supabase
         .from('sessions')
         .select('spotify_access_token')
         .eq('join_code', code)
         .is('ended_at', null)
         .single()
       
-      console.log('DB query result:', { dbSession, dbError })
       accessToken = (dbSession as any)?.spotify_access_token || null
     } else {
-      console.log('Fetching token from NextAuth session')
       const session = await getServerSession(authOptions)
-      console.log('NextAuth session:', session ? 'exists' : 'null')
-      console.log('Session accessToken:', (session as any)?.accessToken ? 'exists' : 'null')
       accessToken = (session as any)?.accessToken || null
     }
 
-    console.log('Final accessToken:', accessToken ? 'exists' : 'null')
-
     if (!accessToken) {
-      console.log('No access token found, returning 401')
       return NextResponse.json({ error: 'No access token' }, { status: 401 })
     }
 
-    console.log('Calling Spotify API...')
     const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     })
 
-    console.log('Spotify API response status:', response.status)
-
     if (response.status === 204 || response.status === 202) {
-      console.log('No content - not playing')
       return NextResponse.json({ isPlaying: false, item: null })
     }
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Spotify API error:', response.status, response.statusText, errorText)
+      console.error('Spotify API error:', response.status, errorText)
       return NextResponse.json({ error: 'Spotify API error', details: errorText }, { status: response.status })
     }
 
