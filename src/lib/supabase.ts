@@ -68,7 +68,7 @@ export type Database = {
         Insert: {
           id?: string
           host_user_id: string
-          session_name?: string
+          session_name: string
           created_at?: string
           ended_at?: string | null
           join_code: string
@@ -90,42 +90,51 @@ export type Database = {
           host_spotify_device_id?: string | null
         }
       }
-      added_tracks: {
+      session_queue: {
         Row: {
           id: string
           session_id: string
-          spotify_track_id: string
+          track_id: string
           track_name: string
-          artist_name: string
-          album_cover_url: string | null
-          added_by_guest_id: string | null
+          track_artists: any // JSONB type
+          track_album: any // JSONB type
+          track_duration_ms: number
+          track_preview_url: string | null
+          track_spotify_url: string
+          added_by_user_id: string | null
+          added_by_name: string
           added_at: string
-          is_played: boolean
-          play_order: number | null
+          position: number
         }
         Insert: {
           id?: string
           session_id: string
-          spotify_track_id: string
+          track_id: string
           track_name: string
-          artist_name: string
-          album_cover_url?: string | null
-          added_by_guest_id?: string | null
+          track_artists: any
+          track_album: any
+          track_duration_ms: number
+          track_preview_url?: string | null
+          track_spotify_url: string
+          added_by_user_id?: string | null
+          added_by_name: string
           added_at?: string
-          is_played?: boolean
-          play_order?: number | null
+          position?: number
         }
         Update: {
           id?: string
           session_id?: string
-          spotify_track_id?: string
+          track_id?: string
           track_name?: string
-          artist_name?: string
-          album_cover_url?: string | null
-          added_by_guest_id?: string | null
+          track_artists?: any
+          track_album?: any
+          track_duration_ms?: number
+          track_preview_url?: string | null
+          track_spotify_url?: string
+          added_by_user_id?: string | null
+          added_by_name?: string
           added_at?: string
-          is_played?: boolean
-          play_order?: number | null
+          position?: number
         }
       }
       session_participants: {
@@ -139,7 +148,7 @@ export type Database = {
         Insert: {
           id?: string
           session_id: string
-          guest_nickname?: string
+          guest_nickname: string
           joined_at?: string
           left_at?: string | null
         }
