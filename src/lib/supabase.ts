@@ -137,6 +137,44 @@ export type Database = {
           position?: number
         }
       }
+      added_tracks: {
+        Row: {
+          id: string
+          session_id: string
+          spotify_track_id: string
+          track_name: string
+          artist_name: string
+          album_cover_url: string | null
+          added_by_guest_id: string | null
+          added_at: string
+          is_played: boolean
+          play_order: number | null
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          spotify_track_id: string
+          track_name: string
+          artist_name: string
+          album_cover_url?: string | null
+          added_by_guest_id?: string | null
+          added_at?: string
+          is_played?: boolean
+          play_order?: number | null
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          spotify_track_id?: string
+          track_name?: string
+          artist_name?: string
+          album_cover_url?: string | null
+          added_by_guest_id?: string | null
+          added_at?: string
+          is_played?: boolean
+          play_order?: number | null
+        }
+      }
       session_participants: {
         Row: {
           id: string
