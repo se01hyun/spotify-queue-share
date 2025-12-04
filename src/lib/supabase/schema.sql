@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS session_participants (
   left_at TIMESTAMP WITH TIME ZONE
 );
 
--- 세션 큐 테이블
+-- 세션 큐 테이블 (실시간 협업 플레이리스트)
 CREATE TABLE IF NOT EXISTS session_queue (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
@@ -48,6 +48,20 @@ CREATE TABLE IF NOT EXISTS session_queue (
   position INTEGER NOT NULL DEFAULT 0
 );
 
+-- 추가된 트랙 이력 테이블 (재생 이력 관리)
+CREATE TABLE IF NOT EXISTS added_tracks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+  spotify_track_id TEXT NOT NULL,
+  track_name TEXT NOT NULL,
+  artist_name TEXT NOT NULL,
+  album_cover_url TEXT,
+  added_by_guest_id UUID,
+  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_played BOOLEAN DEFAULT false,
+  play_order INTEGER
+);
+
 -- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_users_spotify_id ON users(spotify_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_join_code ON sessions(join_code);
@@ -56,18 +70,22 @@ CREATE INDEX IF NOT EXISTS idx_sessions_ended_at ON sessions(ended_at);
 CREATE INDEX IF NOT EXISTS idx_session_participants_session_id ON session_participants(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_queue_session_id ON session_queue(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_queue_position ON session_queue(session_id, position);
+CREATE INDEX IF NOT EXISTS idx_added_tracks_session_id ON added_tracks(session_id);
+CREATE INDEX IF NOT EXISTS idx_added_tracks_is_played ON added_tracks(session_id, is_played);
 
 -- RLS (Row Level Security) 정책
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE added_tracks ENABLE ROW LEVEL SECURITY;
 
 -- 모든 사용자가 읽을 수 있도록 (세션 코드로 참여)
 CREATE POLICY "Users are viewable by everyone" ON users FOR SELECT USING (true);
 CREATE POLICY "Sessions are viewable by everyone" ON sessions FOR SELECT USING (true);
 CREATE POLICY "Session participants are viewable by everyone" ON session_participants FOR SELECT USING (true);
 CREATE POLICY "Session queue is viewable by everyone" ON session_queue FOR SELECT USING (true);
+CREATE POLICY "Added tracks are viewable by everyone" ON added_tracks FOR SELECT USING (true);
 
 -- 사용자는 본인 정보만 수정 가능
 CREATE POLICY "Users can insert their own profile" ON users FOR INSERT WITH CHECK (auth.uid() = id);
@@ -106,4 +124,22 @@ CREATE POLICY "Users can remove tracks" ON session_queue FOR DELETE USING (
     AND auth.uid() = host_user_id
   )
   OR added_by_user_id = auth.uid()::text
+);
+
+-- 세션 참가자만 트랙 이력 추가 가능
+CREATE POLICY "Participants can add track history" ON added_tracks FOR INSERT WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM session_participants 
+    WHERE session_id = added_tracks.session_id 
+    AND left_at IS NULL
+  )
+);
+
+-- 호스트는 모든 트랙 이력 관리 가능
+CREATE POLICY "Hosts can manage track history" ON added_tracks FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM sessions 
+    WHERE id = added_tracks.session_id 
+    AND auth.uid() = host_user_id
+  )
 );
